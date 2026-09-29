@@ -234,24 +234,24 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 | 항목 | 상태 |
 |---|---|
 | 개발 문서 | 작성됨 |
-| Next.js 앱 | P0 / P1-A 구현 및 로컬 검증 완료 |
+| Next.js 앱 | P0 / P1-A / P1-B 구현 및 로컬 검증 완료 |
 | 패키지 버전/Node 버전 선정 | Node 24.21.0 LTS / npm 11.17.0, 아래 작업 기록 참조 |
-| 합성 시세 Provider | 삼성전자 1종목, 결정론적 합성 이력/실시간/정지/재생/초기화 구현 |
+| 합성 시세 Provider | 5종목, 공유 시계/배속/숨김 정지/전체 초기화/URL 복원 |
 | 실제 한투 키 발급/인증/수신 | 미실행 |
 | DART 키/실제 수집/원문 대조 | 미실행 |
 | Supabase 생성/migration/RLS | 미실행 |
-| 테스트/lint/typecheck/build | unit 32개, Chromium E2E 4개, lint/typecheck/build 통과 |
+| 테스트/lint/typecheck/build | unit 44개, Chromium E2E 10개, lint/typecheck/build 통과 |
 | Vercel 배포 | 미실행 |
-| Git Flow | main/develop 초기 기준 구성, feature/p0-p1a-synthetic-market 작업 브랜치 |
+| Git Flow | main/develop 초기 기준. P0/P1-A/P1-B는 feature/p0-p1a-synthetic-market에서 관리하며 통합/릴리스는 미실행 |
 
 ### 7.2 단계 기록
 
 | 단계 | 상태 | 완료 근거 | 남은 일 |
 |---|---|---|---|
 | P0 | done | 키 없는 npm ci/dev/typecheck/lint/unit/build 검증 | ESLint 9 호환성 제한 추적 |
-| P1 | in_progress | P1-A 완료 | P1-B 미시작 |
+| P1 | done | P1-A / P1-B 완료 및 로컬 검증 | 장시간/다중 브라우저 측정은 P6 |
 | P1-A | done | 홈 검색 → 상세, 단일 합성 파이프라인, unit/E2E/브라우저 확인 | 없음 |
-| P1-B | not_started | 이번 요청 범위 밖 | 다종목, 배속, 숨긴 탭 정지, URL 상태 확장 |
+| P1-B | done | 5종목/선택 목록/공유 배속/visibility/URL, unit/E2E/시각 확인 | 실제 OS 백그라운드 동작 미검증 |
 | P2 | not_started | 없음 | DART 파서와 실제 데이터 |
 | P3 | not_started | 없음 | 비교/개인 로컬 기록 |
 | P4 | not_started | 없음 | 공개 캐시와 모드 차단 |
@@ -274,6 +274,8 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 | ADR-09 | 작은 external store + useSyncExternalStore | 원자적 스냅샷으로 네 영역을 함께 갱신, 루트 세션은 페이지 이동 간 유지 |
 | ADR-10 | 미구현 모드를 설정하면 명시적으로 실패 | synthetic/fixture/local만 실행. fixture 모드라도 이 단계에 재무 숫자를 만들지 않음 |
 | ADR-11 | ESLint 9.39.5 고정 | 설치된 Next React/접근성 플러그인의 peer 범위가 ESLint 9까지. 10은 실제 실행 실패 |
+| ADR-12 | P1-B 선택 목록은 URL, 영구 저장은 P3 | 관심종목용 quote와 빈 목록부터 검증하고 개인 저장 범위 유지 |
+| ADR-13 | 같은 1초 이벤트를 wall tick당 1/2/4회 생성 | 배속이 RNG 순서/체결/집계를 바꾸지 않고 UI는 묶어서 갱신 |
 
 ### 7.4 검증이 필요한 외부 항목
 
@@ -287,6 +289,76 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 위 항목이 미확인이라고 전체 개발을 멈추지는 않는다. 키 없는 합성 UI, parser 테스트, 공개 차단 로직을 먼저 만들고 해당 연동만 미검증 상태로 남긴다.
 
 ## 8. 작업 종료 기록
+
+### 2026-09-30 · P1-B 커밋·푸시 사전 검증 (사용자 요청)
+
+- 사용자가 현재 변경사항의 커밋·푸시를 요청했다. 대상은 기존 `feature/p0-p1a-synthetic-market`의 P1-B 구현, 테스트와 관련 문서 총 23개 파일이다. 새 브랜치, PR, merge, 배포는 요청 범위에 포함하지 않는다.
+- 원격 작업 브랜치가 로컬 HEAD `50bec51`과 같고 main/develop도 기존 초기 기준임을 `git ls-remote --heads`로 확인했다. 커밋 메시지는 `feat(market): add multi-symbol synthetic playback controls`다.
+- 이번 검증은 로컬에 설치된 **Node 24.20.0 / npm 11.17.0**을 명령 실행 경로에만 적용했다. package.json의 Node 24.x 범위를 충족하지만 `.nvmrc`의 24.21.0과 패치 버전은 다르다. 런타임 설정과 의존성은 변경하지 않았다.
+- `npm run typecheck`, `npm run lint`, `npm run test:unit`(**44/44**), `npm run build`, `npm run test:e2e`(Chromium desktop/mobile **10/10**)가 최종 exit 0이었다. `npx --yes react-doctor@latest --verbose --scope changed`는 origin/main 비교, **100/100**, 진단 없음이었다. 성능 측정 수치가 아니다.
+- 초기 build/E2E는 실행 환경의 로컬 포트 제한(EPERM)으로 실패했다. 허용된 실행 권한에서 loopback listen을 확인하고, 실패가 남은 Turbopack 캐시를 저장소 밖 임시 경로에 보존·분리한 뒤 같은 코드로 build/E2E가 통과했다. E2E의 NO_COLOR/FORCE_COLOR 안내는 남았으며 테스트 실패는 없었다.
+- README의 미커밋 상태 문구와 이 문서의 Git 상태/검증 기록을 갱신했다. `.env`, 실제 금융 데이터, 빌드/테스트 산출물과 진단 로그는 커밋 대상에서 제외한다. 기존 P1-B 애플리케이션 코드는 추가 수정하지 않았다.
+- KIS/DART/Supabase 실제 연동, 원격 DB, 배포, 수동 브라우저 탐색, Safari/Firefox 및 장시간 부하 측정은 이번에 실행하지 않았다. 다음 기능 단계는 **P2-A 재무 파서와 예시 fixture 계약/표**다.
+
+### 2026-09-30 · 프로젝트 파악 및 현재 코드 재검증
+
+- 요청 범위는 프로젝트 파악이다. 지정된 문서 순서와 실제 라우트, 의존성, 합성 엔진/Provider/store/React 구독, 환경 검증, 테스트를 대조했다. 애플리케이션 코드는 수정하지 않았으며 이 기록만 추가했다.
+- 현재 체크아웃은 `feature/p0-p1a-synthetic-market`, HEAD는 `50bec51`이다. 작업 시작 시 P1-B 관련 tracked 수정 20개와 untracked 파일 3개가 있었으며 모두 보존했다. Git 변경 명령은 실행하지 않았다.
+- 실제 구현 범위는 P0/P1이다. 홈, 종목 상세, 데이터 설명과 5종목 합성 시세가 있으며 선택 목록은 URL에 저장한다. 재무/공시, 비교, 영구 개인 저장, 외부 연동, 배포는 후속 범위다. 설계의 TanStack Query, React Hook Form, Recharts, IndexedDB, Supabase는 현재 구현/설치된 것으로 해석하지 않는다.
+- 문서 불일치: 문서 01의 `상태: 구현 전`, 문서 04의 `실행 가능한 Next.js 앱이 아직 없다`는 초기 명세 작성 시점의 표현으로 현재 코드 및 이 문서 7절과 다르다. 이번 파악에서는 초기 문구를 근거로 앱을 재생성하거나 단계 상태를 되돌리지 않고, 실제 코드와 최신 진행 기록을 현재 상태의 근거로 삼았다.
+- 실제 재검증: 시스템 Node **26.4.0** / npm **11.17.0**에서 `npm run typecheck`, `npm run lint`, `npm run test:unit`(5개 파일, **44/44**), `npm run build`, `git diff --check` 모두 exit 0. 프로젝트 지정 런타임은 여전히 Node 24.x / `.nvmrc` 24.21.0이며 이번 결과가 지정 런타임 재검증을 대신하지 않는다.
+- 미실행: 이번에는 UI 변경이 없어 E2E와 수동 브라우저 확인을 반복하지 않았다. 기존 Chromium E2E 10/10 기록은 아래 P1-B 작업의 결과다. KIS/DART 실제 API, Supabase/원격 DB, 배포도 실행하지 않았다.
+- 남은 제한: 지정 Node 24 재검증, 실제 OS 백그라운드/다중 브라우저/장시간 부하 검증, 외부 연동은 이번 파악에서 추가 확인하지 않았다. **다음 한 가지 작업은 P2-A 재무 파서와 명확한 예시 fixture 계약/표**이며 이번에는 착수하지 않았다.
+
+### 2026-09-30 · P1-B 완료
+
+**범위와 저장소**
+
+- 다음 미완료 단계 P1-B 하나만 진행했다. 시작 시 `feature/p0-p1a-synthetic-market` / `50bec51`의 working tree가 깨끗함을 확인했다. 기존 구현과 첨부 AGENTS.md를 보존했다.
+- main/develop은 초기 기준, 기존 구현은 원격 feature에 있다. 이번 후속 구현에서 새 branch/commit/push/merge/PR은 실행하지 않았고 변경은 현재 체크아웃에 남겼다. 지난 Git 업로드 요청은 이전 작업에서 완료된 기록이다.
+
+**변경 파일과 구현**
+
+- `src/domain/instruments.ts`, 검색: 삼성전자 005930, SK하이닉스 000660, NAVER 035420, 현대자동차 005380, LG전자 066570. 문자열 코드/대소문자 검색과 다종목 키보드 선택. 기준가는 자체 임의 상수이며 실제 가격이 아니다.
+- 표시 식별자 참고: [SK하이닉스 IR](https://www.skhynix.com/ir/UI-FR-IR99/), [NAVER 주가정보](https://www.navercorp.com/investment/stock), [현대자동차 IR](https://www.hyundai.com/worldwide/en/company/ir/stock-information/stock-information), [LG전자 IR](https://www.lg.com/global/investor-relations/). 실제 가격/재무 수치를 복사하지 않았다.
+- `providers/*`, `stores/market-store.ts`, `market-context.tsx`: scheduler 하나와 5종목 공유 가상 시각, 종목/채널 격리, quote 목록/상세/공유 상태별 구독. 배속이 달라도 같은 가상 시간의 체결·OHLC·거래량이 동일하다. 전체 reset은 새 세션/버퍼와 정지/배속 보존. 숨김 timer 제거와 backlog 없는 복귀, 수동 정지 유지, Strict Mode visibility cleanup. M01~M07/M14.
+- `market-view.ts`, 상세 route/component: URL 기간(세션/30분/15분)·탭(개요/호가/체결) reload/back 복원과 잘못된 값의 안전한 redirect. 1분 집계 간격과 조회 기간 구분. 종목별 제목/미지원 404.
+- 홈/재생 제어/CSS: 5종목 스트림, 별표 선택 목록/URL/빈 목록/돌아가기. 데스크톱 2열, 모바일 세로 배치와 모든 선택 버튼/기간/탭 표시. 합성 고지/로딩/오류/stale/차트 대체 표 유지. 영구 개인 저장은 P3. U06~U09.
+- `price-chart.tsx`: 4배속이 분 경계를 넘을 때 이전 분의 마감 OHLC·거래량을 먼저 갱신한다. 새 분 append, reset setData, unmount chart.remove 회귀 테스트 추가.
+- README와 문서 02 구현 계약, 이 문서 상태/검증 기록 갱신. 의존성/lockfile 변경 없음.
+
+**실제로 실행한 검증 (Node 24.21.0 / npm 11.17.0)**
+
+| 명령 / 검사 | 최종 결과 |
+|---|---|
+| `npm run typecheck` | exit 0, strict tsc / Next route 타입 통과 |
+| `npm run lint` | exit 0, 오류/경고 0 |
+| `npm run test:unit` | exit 0, 5개 파일 44/44 통과 |
+| `npm run build` | exit 0, production build 성공 |
+| `npm run test:e2e` | exit 0, Chromium desktop/mobile 10/10 통과, 최종 CSS 포함 재실행 |
+| `npx react-doctor@latest --verbose --scope changed` | exit 0, 100/100, 진단 없음. origin/main 비교이며 성능 측정 수치가 아님 |
+| `npm run start -- --port 3201` | Ready, 로컬 production 직접 탐색 |
+| `git diff --check` | exit 0, 공백 오류 없음 |
+
+Unit: 같은 가상 시간의 1/2/4배속 체결/호가/캔들/누적량을 5종목 모두 대조, 종목·채널 격리, 전 종목 reset 원자성, timer 하나, 숨김 시작/120초 정지/복귀, 수동 정지 유지, 20회 상세 구독 교체/cleanup, history, URL whitelist/중복/빈 선택, 기간 필터, 다종목 검색, React visibility listener, 분 경계 chart adapter. 기존 P0/P1-A 테스트 포함.
+
+E2E: 기존 keyless/offline/정합성/pause/reset/resize에 5종목 공유 시각, 다른 종목 상세로 이동 시 값 유지, 4배속 전체 reset, 모바일 별표 해제/빈 목록/reload, 기간/탭 reload/back/invalid URL, 가로 넘침 없음 추가. 핵심 흐름 외부 HTTP/pageerror 0건. visibility는 document의 제어된 플랫폼 이벤트와 Playwright 시계로 검증했다.
+
+**브라우저 확인과 해결한 문제**
+
+- ego-browser에서 다종목 홈, NAVER 검색/상세, 2배속·정지·최근 15분 URL 선택을 직접 조작했다. 실제 Playwright desktop/mobile PNG로 홈/상세 화면을 시각 검토했다.
+- 초기 E2E에서 기존 광범위한 `nav a:first-child`/마지막 table cell 숨김이 모바일의 새 개요 탭/별표도 숨겼다. 헤더 메뉴로 규칙을 제한하고 모바일 선택 열을 표시한 뒤 통과했다.
+- 새 배속 select로 기존 무명 combobox 검색이 모호해져 접근 가능한 이름으로 구분했다. 홈 route 완료 전 evaluateAll이 빈 배열을 읽던 테스트는 목록 표시를 먼저 기다리게 고쳤다.
+- React Doctor 초기 85점의 lookup/복잡도 진단은 선택 Set과 실제 가격/캔들 패널 분리로 해결하고 100점 재검증했다. 규칙 비활성화 없음.
+
+**미실행과 제한**
+
+- KIS 계좌/인증/REST/WS, DART 수집/파서/원문 대조, Supabase/원격 DB, 배포, 신규 Git 변경 명령은 미실행. 금융 원천 API 호출 없음. 표시 식별자 참고 웹 검색만 수행했다.
+- 의존성 변경이 없어 이번 `npm ci`와 공개 설정 차단 build 반복 검사는 하지 않았다. P0/P1-A의 기존 검증 기록을 아래에 보존했다.
+- 실제 OS 백그라운드 동작은 미검증. ego Page 관찰 시 visibilityState가 visible로 유지돼 실제 hidden 검증 근거로 삼지 않았다. 제어된 visibility 이벤트와 root listener cleanup, 숨김 중 timer 0은 자동화로 확인했다.
+- Safari/Firefox/실제 보조공학, 30분 실행/부하 측정은 미실행(P6). 합성 1분 세션/100원 호가 규칙이며 실제 거래소 규정 구현을 뜻하지 않는다.
+
+**다음 한 가지 작업:** P2-A 재무 파서와 명확한 예시 fixture 계약/표. 실제 DART 수집은 P2-B로 남긴다.
 
 ### 2026-09-30 · Git Flow 최초 업로드 준비 (사용자 요청)
 

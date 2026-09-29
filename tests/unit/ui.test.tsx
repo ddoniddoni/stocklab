@@ -14,7 +14,10 @@ const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/link", () => ({
   default: (props: ComponentProps<"a">) => <a {...props} />,
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+  useSearchParams: () => new URLSearchParams(),
+}));
 afterEach(() => {
   vi.useRealTimers();
   vi.clearAllMocks();
@@ -35,6 +38,27 @@ describe("accessible search", () => {
     expect(push).not.toHaveBeenCalled();
     fireEvent.keyDown(input, { key: "Enter" });
     expect(push).toHaveBeenCalledWith("/stocks/005930");
+  });
+  it("wraps across five search options and matches Latin names without case sensitivity", () => {
+    render(<StockSearch />);
+    const input = screen.getByRole("combobox");
+    fireEvent.focus(input);
+    expect(screen.getAllByRole("option")).toHaveLength(5);
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+    expect(screen.getAllByRole("option").at(-1)).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(screen.getAllByRole("option")[0]).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    fireEvent.change(input, { target: { value: "naver" } });
+    expect(screen.getByRole("option")).toHaveTextContent("NAVER");
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(push).toHaveBeenCalledWith("/stocks/035420");
   });
   it("shows an empty result and never navigates on unmatched Enter", () => {
     render(<StockSearch />);
@@ -72,6 +96,47 @@ describe("app shell and cleanup", () => {
     expect(screen.getByTestId("virtual-time")).toHaveTextContent(before!);
     view.unmount();
     expect(vi.getTimerCount()).toBe(0);
+  });
+  it("handles visibility events, preserves manual pause, and removes the listener on unmount", () => {
+    vi.useFakeTimers();
+    const visibility = vi.spyOn(document, "visibilityState", "get");
+    visibility.mockReturnValue("visible");
+    const remove = vi.spyOn(document, "removeEventListener");
+    const view = render(
+      <StrictMode>
+        <MarketSession config={parsePublicConfig({})}>
+          <MarketControls />
+          <HomeMarket />
+        </MarketSession>
+      </StrictMode>,
+    );
+    fireEvent.change(screen.getByRole("combobox", { name: "합성 시세 배속" }), {
+      target: { value: "4" },
+    });
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByTestId("virtual-time")).toHaveTextContent("09:40:04");
+    visibility.mockReturnValue("hidden");
+    fireEvent(document, new Event("visibilitychange"));
+    expect(vi.getTimerCount()).toBe(0);
+    act(() => vi.advanceTimersByTime(60000));
+    expect(screen.getByTestId("virtual-time")).toHaveTextContent("09:40:04");
+    visibility.mockReturnValue("visible");
+    fireEvent(document, new Event("visibilitychange"));
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByTestId("virtual-time")).toHaveTextContent("09:40:08");
+    fireEvent.click(screen.getByRole("button", { name: "합성 시세 일시정지" }));
+    visibility.mockReturnValue("hidden");
+    fireEvent(document, new Event("visibilitychange"));
+    visibility.mockReturnValue("visible");
+    fireEvent(document, new Event("visibilitychange"));
+    expect(vi.getTimerCount()).toBe(0);
+    view.unmount();
+    expect(remove).toHaveBeenCalledWith(
+      "visibilitychange",
+      expect.any(Function),
+    );
+    visibility.mockRestore();
+    remove.mockRestore();
   });
   it("has actionable loading, unsupported and error states", () => {
     const loading = render(<Loading />);

@@ -39,6 +39,7 @@ export default function PriceChart({
     volume: ISeriesApi<"Histogram">;
     session?: string;
     firstTime?: number;
+    lastTime?: number;
   } | null>(null);
   useEffect(() => {
     if (!container.current) return;
@@ -105,10 +106,16 @@ export default function PriceChart({
       current.session = sessionId;
       current.firstTime = firstTime;
     } else {
-      const last = candles.at(-1)!;
-      current.price.update(asData(last));
-      current.volume.update(asVolume(last));
+      // A batched 4x tick may finish the previous minute and open another.
+      // Update the former last candle before appending newer candles.
+      for (const candle of candles) {
+        if (asData(candle).time >= (current.lastTime ?? 0)) {
+          current.price.update(asData(candle));
+          current.volume.update(asVolume(candle));
+        }
+      }
     }
+    current.lastTime = asData(candles.at(-1)!).time;
   }, [candles, sessionId]);
   return (
     <div

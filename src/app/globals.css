@@ -159,13 +159,13 @@ table {
   padding: 2px 4px;
   letter-spacing: 0.06em;
 }
-nav {
+.header-inner nav {
   display: flex;
   align-items: center;
   gap: 32px;
   font-size: 13px;
 }
-nav a:last-child {
+.header-inner nav a:last-child {
   color: var(--muted);
 }
 .header-mode {
@@ -859,10 +859,10 @@ tbody th {
   }
   .brand-tag,
   .header-mode,
-  nav a:first-child {
+  .header-inner nav a:first-child {
     display: none;
   }
-  nav {
+  .header-inner nav {
     margin-left: auto;
     gap: 0;
     font-size: 12px;
@@ -914,10 +914,6 @@ tbody th {
   .home-table th,
   .home-table td {
     padding: 14px 10px;
-  }
-  .home-table th:last-child,
-  .home-table td:last-child {
-    display: none;
   }
   .home-table .volume-col {
     display: none;
@@ -1045,5 +1041,100 @@ tbody th {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Shared playback and URL-controlled market views. */
+.view-nav,
+.period-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.view-nav a,
+.period-nav a {
+  padding: 7px 12px;
+  color: var(--muted);
+  border-radius: 5px;
+}
+.view-nav a[aria-current],
+.period-nav a[aria-current] {
+  color: var(--text);
+  background: var(--border);
+}
+.detail-nav {
+  margin-top: 24px;
+  padding-left: 0;
+}
+.period-nav {
+  padding: 16px 0;
+  border-bottom: 0;
+  margin-bottom: 12px;
+}
+.period-nav > span,
+.period-nav small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.watch-button {
+  min-width: 40px;
+  min-height: 40px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 20px;
+  cursor: pointer;
+}
+.watch-button[aria-pressed="true"] {
+  color: var(--accent);
+}
+.empty-watch {
+  padding: 40px 24px;
+  text-align: center;
+}
+.empty-watch p {
+  color: var(--muted);
+  margin: 12px 0 20px;
+}
+.empty-watch a {
+  color: var(--accent);
+}
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.speed-control select {
+  padding: 8px;
+  min-height: 40px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+@media (max-width: 600px) {
+  .control-buttons {
+    flex-wrap: wrap;
+  }
+  .period-nav {
+    gap: 4px;
+  }
+  .period-nav small {
+    flex-basis: 100%;
+  }
+  .home-table th,
+  .home-table td {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .view-nav {
+    padding-left: 10px;
+    padding-right: 10px;
   }
 }

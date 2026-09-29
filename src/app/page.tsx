@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { StockSearch } from "@/features/search/stock-search";
 import { HomeMarket } from "@/features/market/components/home-market";
 import { MarketControls } from "@/features/market/components/market-controls";
@@ -13,13 +14,21 @@ export default function Home() {
           <p className="intro">종목을 찾아, 가격의 흐름을 살펴보세요.</p>
         </div>
         <span className="scope-label">
-          첫 번째 실험<span>하나의 종목, 하나의 흐름</span>
+          공유 시세 실험<span>다섯 종목, 하나의 시계</span>
         </span>
       </div>
       <StockSearch />
       <div className="home-market-area">
         <MarketControls />
-        <HomeMarket />
+        <Suspense
+          fallback={
+            <section className="panel chart-loading" role="status">
+              종목 목록을 준비하고 있습니다…
+            </section>
+          }
+        >
+          <HomeMarket />
+        </Suspense>
       </div>
       <section className="session-guide">
         <div>

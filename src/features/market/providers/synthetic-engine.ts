@@ -5,11 +5,10 @@ import {
   tradeSchema,
   type MarketSnapshot,
 } from "@/domain/market";
-import { instrument } from "@/domain/instruments";
+import { instrument, type Instrument } from "@/domain/instruments";
 export const START_MS = Date.UTC(2026, 0, 5, 0, 0, 0);
 export const TRADE_LIMIT = 500;
 export const TICK_SIZE = 100; // A simulation rule, not a full KRX tick-size implementation.
-const INITIAL_PRICE = 70_000; // Authored constant, not a recorded market price.
 function randomFromSeed(seed: string) {
   let state = 2166136261;
   for (const char of seed)
@@ -25,13 +24,15 @@ export class SyntheticEngine {
   private readonly random: () => number;
   private clock = START_MS;
   private sequence = 0;
-  private lastPrice = INITIAL_PRICE;
+  private lastPrice: number;
   private volume = 0n;
   private current!: MarketSnapshot;
   constructor(
     readonly seed: string,
     readonly sessionId: string,
+    private readonly stock: Instrument = instrument,
   ) {
+    this.lastPrice = stock.initialPrice;
     this.random = randomFromSeed(seed);
     // Every history candle is aggregated from the same authored trade stream.
     for (let i = 0; i < 160; i++) this.advance(15_000, START_MS);
@@ -44,7 +45,12 @@ export class SyntheticEngine {
       throw new Error("잘못된 가상 시간 간격");
     this.clock += deltaMs;
     const movement = Math.floor(this.random() * 5) - 2;
-    const pull = this.lastPrice > 76_000 ? -1 : this.lastPrice < 64_000 ? 1 : 0;
+    const pull =
+      this.lastPrice > this.stock.initialPrice + 6000
+        ? -1
+        : this.lastPrice < this.stock.initialPrice - 6000
+          ? 1
+          : 0;
     this.lastPrice = Math.max(
       10_000,
       this.lastPrice + (movement + pull) * TICK_SIZE,
@@ -54,7 +60,7 @@ export class SyntheticEngine {
     const meta = {
       source: "synthetic" as const,
       venue: "SIM" as const,
-      symbol: instrument.symbol,
+      symbol: this.stock.symbol,
       sessionId: this.sessionId,
       eventTimeMs: this.clock,
       receivedAtMs,
@@ -70,9 +76,11 @@ export class SyntheticEngine {
       ...meta,
       sequence: ++this.sequence,
       lastPrice: trade.price,
-      previousClose: INITIAL_PRICE,
-      change: trade.price - INITIAL_PRICE,
-      changePercent: ((trade.price - INITIAL_PRICE) / INITIAL_PRICE) * 100,
+      previousClose: this.stock.initialPrice,
+      change: trade.price - this.stock.initialPrice,
+      changePercent:
+        ((trade.price - this.stock.initialPrice) / this.stock.initialPrice) *
+        100,
       cumulativeVolume: this.volume.toString(),
     });
     const levels = (direction: number) =>
@@ -95,7 +103,7 @@ export class SyntheticEngine {
       candles: aggregateTrade(this.current?.candles ?? [], trade),
       manifest: {
         source: "synthetic",
-        generatorVersion: "1.0.0",
+        generatorVersion: "1.1.0",
         seed: this.seed,
         generatedAt: new Date(START_MS).toISOString(),
         scenarioId: "balanced-session",

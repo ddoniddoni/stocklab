@@ -1,5 +1,5 @@
 "use client";
-import { useMarket } from "../market-context";
+import { useSession } from "../market-context";
 import { time } from "@/lib/formatting/market";
 const labels = {
   idle: "준비 중",
@@ -12,8 +12,8 @@ const labels = {
   "market-closed": "장 마감",
 };
 export function MarketControls() {
-  const { snapshot, pause, resume, reset } = useMarket();
-  const paused = snapshot.status === "paused";
+  const { snapshot, pause, resume, reset, setSpeed } = useSession();
+  const paused = snapshot.manualPaused;
   return (
     <div className="control-bar">
       <div className={`connection ${snapshot.status}`} role="status">
@@ -22,12 +22,24 @@ export function MarketControls() {
       </div>
       <span className="virtual-clock">
         가상 시각{" "}
-        <time data-testid="virtual-time">
-          {time(snapshot.quote.eventTimeMs)}
-        </time>{" "}
+        <time data-testid="virtual-time">{time(snapshot.eventTimeMs)}</time>{" "}
         <small>KST</small>
       </span>
       <div className="control-buttons">
+        <label className="speed-control">
+          배속
+          <select
+            aria-label="합성 시세 배속"
+            value={snapshot.speed}
+            onChange={(event) =>
+              setSpeed(Number(event.target.value) as 1 | 2 | 4)
+            }
+          >
+            <option value="1">1배</option>
+            <option value="2">2배</option>
+            <option value="4">4배</option>
+          </select>
+        </label>
         <button
           type="button"
           onClick={paused ? resume : pause}
@@ -41,6 +53,11 @@ export function MarketControls() {
           <span aria-hidden="true">↺</span> 초기화
         </button>
       </div>
+      {snapshot.hidden ? (
+        <p className="stream-message" role="status">
+          탭이 숨겨져 가상 시간이 멈췄습니다.
+        </p>
+      ) : null}
       {snapshot.message ? (
         <p className="stream-message" role="status">
           {snapshot.message}

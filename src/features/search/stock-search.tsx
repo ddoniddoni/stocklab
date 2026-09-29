@@ -56,9 +56,13 @@ export function StockSearch() {
               setOpen(true);
               setActive(
                 matches.length
-                  ? (active +
-                      (event.key === "ArrowDown" ? 1 : -1) +
-                      matches.length) %
+                  ? active === -1
+                    ? event.key === "ArrowDown"
+                      ? 0
+                      : matches.length - 1
+                    : (active +
+                        (event.key === "ArrowDown" ? 1 : -1) +
+                        matches.length) %
                       matches.length
                   : -1,
               );

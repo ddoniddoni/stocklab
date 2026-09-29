@@ -311,3 +311,13 @@ Preview도 공개 가능 환경으로 취급한다. 운영 데이터와 별도 �
 [S13]: https://nextjs.org/docs/app/guides/environment-variables
 [S14]: https://supabase.com/docs/guides/getting-started/api-keys
 [S15]: https://supabase.com/docs/guides/database/postgres/row-level-security
+
+## P1-B 구현 계약 (2026-09-30)
+
+- Provider 하나에 종목별 엔진 5개와 scheduler 하나를 둔다. 모두 같은 1초 가상 간격으로 진행한다. 삼성전자는 기존 seed, 다른 종목은 `seed:symbol`로 난수를 분리한다. 생성기 버전은 1.1.0이다. 가격 기준값은 자체 합성 상수다.
+- 1/2/4배속은 wall tick에서 가상 1초를 1/2/4번 진행한다. 모든 체결을 집계·발행하고 quote/orderbook 스냅샷은 wall tick당 한 번 발행한다. 발행 전에 모든 종목 스냅샷을 완성한다.
+- 이벤트 sessionId는 `synthetic:seed:generation:symbol`, sequence는 종목 세션 내부 순번이다. sessionId+sequence가 종목 간 충돌하지 않는다. reset 이벤트와 공유 재생 상태에는 종목 접미사 없는 공유 sessionId를 사용한다.
+- 루트 store는 5종목 quote만 구독한다. 행은 종목별 quote, 상세는 종목별 전체 스냅샷, 제어는 공유 상태를 구독한다. 상세 trade/orderbook 구독은 참조 수가 0이면 해제한다. 루트 unmount는 Provider/scheduler/visibility listener를 정리한다.
+- 수동 정지와 visibility 정지를 별도로 보관한다. 숨김 중 timer를 제거하고 복귀하면 backlog 없이 이어진다. reset은 모든 종목을 교체하고 정지/배속을 유지한다.
+- 차트는 배속 묶음이 분 경계를 넘으면 이전 분 마감값부터 새 분 순서대로 반영한다. 표시 기간 필터는 집계 버퍼를 변경하지 않는다.
+- 상세 URL은 `period=session|30m|15m`, `tab=overview|orderbook|trades`. 잘못되거나 중복된 값은 기본값으로 redirect한다. 홈은 `view=all|watchlist`, `symbols`로 목록을 복원하고 미지원/중복 코드는 제외한다. 영구 관심종목/개인 기록 저장은 P3에서 진행한다.
