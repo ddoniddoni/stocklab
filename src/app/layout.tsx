@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/layout/site-header";
 import { MarketSession } from "@/features/market/market-context";
 import { getPublicConfig } from "@/server/config";
+import { PersonalSession } from "@/features/personal/personal-context";
+import { PendingDraftNotice } from "@/features/personal/personal-controls";
 import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "StockLab · 합성 시세 리서치", template: "%s | StockLab" },
@@ -15,9 +17,10 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        <MarketSession config={getPublicConfig()}>
+        <PersonalSession><MarketSession config={getPublicConfig()}>
           <SiteHeader />
           <main id="main" className="main-shell" tabIndex={-1}>
+            <PendingDraftNotice />
             {children}
           </main>
           <footer className="site-footer">
@@ -26,7 +29,7 @@ export default function RootLayout({
             </span>
             <span>시뮬레이션 전용 · 투자 판단용 데이터가 아닙니다</span>
           </footer>
-        </MarketSession>
+        </MarketSession></PersonalSession>
       </body>
     </html>
   );

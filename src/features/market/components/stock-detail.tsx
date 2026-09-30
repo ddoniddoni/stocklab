@@ -16,6 +16,7 @@ import { MarketControls } from "./market-controls";
 import { OrderBookView } from "./order-book";
 import { RecentTrades } from "./recent-trades";
 import { SourceNotice } from "./source-notice";
+import { StockResearchActions, StorageStatus } from "@/features/personal/personal-controls";
 const PriceChart = dynamic(() => import("./price-chart"), {
   ssr: false,
   loading: () => (
@@ -56,8 +57,9 @@ export function StockDetail({
             </p>
           </div>
         </div>
-        <span className="subtle">데모 세션 · 2026.01.05</span>
+        <StockResearchActions symbol={stock.symbol} />
       </div>
+      <StorageStatus />
       <StockQuote quote={quote} />
       <MarketControls />
       <nav className="view-nav detail-nav" aria-label="상세 화면 보기">

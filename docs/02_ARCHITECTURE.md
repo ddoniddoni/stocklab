@@ -340,3 +340,14 @@ Preview도 공개 가능 환경으로 취급한다. 운영 데이터와 별도 �
 - `review-model.ts`의 매핑은 원문을 대조한 정확한 원천 행을 보고서 해시에 결합한다. 검토 기록/원본/후보가 맞아야 명시적 DTO를 내보낸다. fixture 계정이나 추정 XBRL 이름을 실제 계정으로 재사용하지 않는다. 해시 검사는 로컬 파일 간 결합을 확인하는 수단이며 공급자의 전자서명이나 수동 검토의 진실성을 증명하지 않는다.
 - 현재 실제 DTO는 검토된 보고 금액과 누적 금액을 구분하는 수집 산출물이다. 실제 자료의 Q4/CF 단일 분기 파생과 웹 repository 연결은 실제 원천 검증 이후에 진행한다. 12월 결산·KRW 외의 데이터는 내보내기 지원 범위 밖이다.
 - 키/원본 URL/원천 오류를 로그에 출력하지 않는다. `.env.local`은 명시적으로 로딩하고 public/Vercel/CI에서는 실제 도구 실행을 거부한다. 키·원천·검토 산출물·공개 캐시 적재를 Git 커밋이나 자동 배포에 포함하지 않는다.
+
+## P3 개인 리서치 계약 (2026-09-30 · 실행 미검증)
+
+- `domain/personal.ts`가 개인 데이터/백업 Zod 스키마와 `PersonalRepository` 계약을 정의한다. 첫 구현은 IndexedDB이며 클라우드 DB/인증 없이 실행한다. 기존 단일 npm 프로젝트와 의존성을 유지하고 새 패키지를 설치하지 않았다.
+- `features/personal/indexed-db-repository.ts`는 `stocklab-personal` DB v1 / `personal` object store의 `guest` 키 한 개에 작은 개인 문서를 저장한다. 노트/관심종목 수정은 readwrite 트랜잭션 안에서 버전을 비교하고 put한다. put 요청 성공이 아닌 트랜잭션 complete를 저장 성공으로 처리한다. 가져오기와 초기화도 한 트랜잭션이며 실패 시 기존 문서를 보존한다.
+- 문서 generation은 초기화 시 교체하고 revision은 증가시킨다. 노트는 자기 version, 관심종목은 watchVersion, 백업 가져오기/초기화는 문서 revision까지 비교한다. 다른 탭의 삭제·초기화 뒤 오래된 초안이 조용히 되살아나거나 덮어쓰지 않게 한다.
+- `PersonalSession`은 시장 store와 별도의 외부 store를 루트에서 보관한다. BroadcastChannel에는 변경 알림만 보내고 노트 본문을 전송하지 않는다. 채널 미지원 시에도 포커스/탭 복귀로 다시 읽으며 쓰기 충돌은 DB 트랜잭션에서 검사한다. 고빈도 quote 구독은 기존 컴포넌트에 유지한다.
+- 노트의 활성 초안은 라우트가 바뀌어도 루트 store에 남는다. 600ms debounce, 포커스 이탈/링크/뒤로가기/탭 숨김 시 flush, dirty 또는 개인 데이터 쓰기가 진행 중일 때 beforeunload 안내를 둔다. 브라우저 강제 종료나 OS 장애의 저장 보장은 하지 않는다. 저장 실패 시 초안 텍스트 내보내기와 페이지 밖 초안 안내를 제공한다.
+- `/compare`는 최대 3개 fixture repository 요청을 병렬 처리하고 서버에서 표/막대를 렌더링한다. 클라이언트는 URL 필터만 담당한다. 시장 가격/틱과 비교 수치를 결합하지 않으며 기업 간 기간·통화·기준·출처가 다른 항목은 비교 불가로 둔다.
+- 기존 계획의 React Hook Form/idb/추가 차트 라이브러리는 도입하지 않았다. 작은 일반 텍스트 폼은 controlled input과 저장 경계의 Zod, IndexedDB는 native transaction으로 구현했다. 동작 복잡성을 추가하지 않고 현재 계약을 먼저 검증할 선택이며, 이 결정을 성능 개선 실측으로 해석하지 않는다.
+- 공식 동작 참고: [MDN IndexedDB 사용 가이드](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Using_IndexedDB), 확인일 2026-09-30. 트랜잭션 수명, 완료 이벤트, 다중 탭 버전 변경 및 종료 시 비동기 저장의 제약을 참고했다. 앱 브라우저 검증은 수행하지 않았다.

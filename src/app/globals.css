@@ -1247,3 +1247,104 @@ tbody th {
     padding-right: 10px;
   }
 }
+
+/* Personal research: a compact list beside a plain-text working journal. */
+.personal-page-heading { margin: 8px 0 24px; }
+.personal-page-heading h1 { margin-top: 8px; }
+.local-notice { color: var(--muted); font-size: 12px; padding: 12px 0 20px; }
+.personal-status { color: var(--muted); font-size: 12px; margin: 12px 0; }
+.personal-issue { border-left: 3px solid #e6c487; background: var(--panel-alt); padding: 16px; margin: 16px 0; overflow-wrap: anywhere; }
+.personal-issue p + button, .personal-issue .research-actions { margin-top: 12px; }
+.personal-issue a { display: inline-block; color: var(--accent); margin-top: 8px; }
+.personal-content { padding: 20px; min-width: 0; }
+.personal-empty { padding: 36px 20px; color: var(--muted); }
+.personal-empty h2 { color: var(--text); margin-bottom: 8px; }
+.personal-section, .backup-panel, .recent-notes { margin-top: 24px; }
+.research-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.research-actions button, .research-actions .button-link { min-height: 42px; }
+.research-actions > a:not(.button-link) { color: var(--accent); }
+.danger-button { color: var(--up); }
+.watchlist-rows, .instrument-picker, .personal-list, .note-list, .comparison-bars { list-style: none; margin: 0; padding: 0; }
+.watchlist-rows li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 18px 20px; border-top: 1px solid var(--border); }
+.watch-position { color: var(--muted); font-variant-numeric: tabular-nums; }
+.instrument-picker { display: flex; flex-wrap: wrap; }
+.instrument-picker li { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px; flex: 1 1 210px; border-top: 1px solid var(--border); }
+.instrument-picker small { display: block; margin-top: 4px; }
+.legacy-watch { padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.legacy-watch a { color: var(--accent); }
+.home-table > .personal-status, .home-table > .personal-issue { margin: 16px 20px; }
+.recent-notes > .local-notice { padding: 12px 20px; }
+.personal-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.personal-list li { padding: 20px; border-top: 1px solid var(--border); }
+.personal-list strong { display: block; overflow-wrap: anywhere; }
+.personal-list small { display: block; margin-top: 8px; }
+.pending-draft { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px; border: 1px solid #e6c487; border-radius: 6px; margin-bottom: 20px; font-size: 12px; }
+.pending-draft a { color: var(--accent); }
+.backup-panel .research-actions { margin-top: 16px; }
+.file-label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; max-width: 100%; }
+.file-label input { max-width: 100%; width: 240px; }
+.file-label input::file-selector-button { font: inherit; background: var(--panel-alt); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-right: 8px; cursor: pointer; }
+.import-preview { margin-top: 16px; padding: 16px; border: 1px solid var(--accent); border-radius: 6px; }
+.notes-workspace { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 20px; align-items: start; }
+.notes-sidebar, .note-editor { min-width: 0; }
+.notes-workspace label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 8px; font-size: 13px; }
+.notes-workspace input:not([type="checkbox"]), .notes-workspace textarea, .notes-workspace select { display: block; width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); color: var(--text); font: inherit; }
+.notes-workspace textarea { resize: vertical; line-height: 1.8; }
+.notes-workspace input::placeholder, .notes-workspace textarea::placeholder { color: var(--muted); opacity: .8; }
+.notes-sidebar label:not(:first-child) { margin-top: 16px; }
+.new-note-button { width: 100%; margin-top: 20px; border-color: var(--accent); }
+.note-list { max-height: 600px; overflow-y: auto; }
+.note-list button { display: flex; flex-direction: column; align-items: start; width: 100%; gap: 6px; text-align: left; border: 0; border-top: 1px solid var(--border); border-radius: 0; padding: 18px 20px; background: transparent; }
+.note-list button[aria-pressed="true"] { background: var(--panel-alt); box-shadow: inset 3px 0 var(--accent); }
+.note-list strong { overflow-wrap: anywhere; }
+.note-list span { color: var(--muted); font-size: 12px; font-weight: 400; }
+.note-title-row { display: grid; grid-template-columns: minmax(0, 1fr) 160px; gap: 16px; margin-bottom: 28px; }
+.note-fields-frame { border: 0; margin: 0; min-width: 0; }
+.note-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 20px; }
+.note-fields label { border-top: 1px solid var(--border); padding-top: 16px; }
+.note-checklist { margin: 28px 0; padding: 16px 0 0; border: 0; border-top: 1px solid var(--border); }
+.note-checklist legend { padding-right: 12px; }
+.checklist-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-bottom: 10px; }
+.checklist-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+.note-dates { font-size: 11px; color: var(--muted); margin: 20px 0 12px; }
+.save-status { font-size: 12px; color: var(--muted); }
+.save-saved { color: var(--live); }
+.save-conflict, .save-error { color: #e6c487; }
+.compare-picker { display: flex; flex-wrap: wrap; gap: 10px; border: 0; padding: 24px 0 0; margin: 24px 0 0; }
+.compare-picker legend { font-size: 13px; padding: 0; }
+.compare-picker legend span { margin-left: 8px; }
+.compare-picker label { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); background: var(--panel); border-radius: 6px; padding: 12px 16px; cursor: pointer; }
+.compare-picker label:has(:checked) { border-color: var(--accent); }
+.compare-picker label:has(:disabled:not(:checked)) { opacity: .55; cursor: not-allowed; }
+.compare-picker input { width: 16px; height: 16px; accent-color: var(--accent); }
+.compare-picker small { display: block; margin-top: 3px; }
+.compare-chart { margin: 0 0 24px; }
+.comparison-bars { padding: 24px 20px; }
+.comparison-bars li { display: grid; grid-template-columns: 110px minmax(100px, 1fr) 150px; align-items: center; gap: 16px; padding: 12px 0; }
+.comparison-bars small { display: block; white-space: normal; overflow-wrap: anywhere; }
+.compare-table th:not(:first-child) { min-width: 180px; }
+.cell-reason { display: block; max-width: 240px; margin: 8px 0 0 auto; white-space: normal; }
+.comparison-links { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0; }
+@media (max-width: 1050px) {
+  .header-inner { flex-wrap: wrap; height: auto; gap: 16px 24px; padding-top: 16px; padding-bottom: 16px; }
+  .header-inner nav { order: 3; flex-basis: 100%; flex-wrap: wrap; justify-content: flex-start; gap: 16px 24px; }
+  .notes-workspace { grid-template-columns: 220px minmax(0, 1fr); }
+  .note-fields { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 767px) {
+  .notes-workspace { grid-template-columns: minmax(0, 1fr); }
+  .note-list { max-height: 260px; }
+  .note-title-row { grid-template-columns: minmax(0, 1fr); }
+  .personal-list { grid-template-columns: minmax(0, 1fr); }
+  .watchlist-rows li { grid-template-columns: 24px minmax(0, 1fr); gap: 12px; }
+  .watchlist-rows .research-actions { grid-column: 2; }
+  .stock-heading { flex-wrap: wrap; gap: 16px; }
+  .comparison-bars li { grid-template-columns: minmax(0, 1fr) 120px; gap: 8px; }
+  .comparison-bars li > a { grid-column: 1 / -1; }
+  .comparison-bars li .numeric { font-size: 12px; }
+  .personal-content { padding: 16px; }
+  .compare-picker label { padding: 10px; flex: 1 1 140px; }
+  .note-editor .panel-heading { flex-wrap: wrap; gap: 8px; }
+  .header-inner nav a:first-child { display: inline; }
+  .header-inner nav { margin-left: 0; gap: 12px 18px; }
+}

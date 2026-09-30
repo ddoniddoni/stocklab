@@ -18,6 +18,9 @@ export function SiteHeader() {
           </Link>
           <nav aria-label="주요 메뉴">
             <Link href="/">종목 탐색</Link>
+            <Link href="/watchlist">관심종목</Link>
+            <Link href="/compare">기업 비교</Link>
+            <Link href="/notes">리서치 노트</Link>
             <Link href="/about/data">
               데이터 설명 <span aria-hidden="true">↗</span>
             </Link>
