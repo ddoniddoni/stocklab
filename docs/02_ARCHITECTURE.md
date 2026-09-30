@@ -325,8 +325,18 @@ Preview도 공개 가능 환경으로 취급한다. 운영 데이터와 별도 �
 ## P2-A 구현 계약 (2026-09-30 · 실행 미검증)
 
 - `domain/financials/`는 예시 회사/보고서 원천 스키마, 금액 parser, 정규화 DTO와 필터를 둔다. 예시 회사 ID는 `fixture-company:<symbol>`이며 실제 8자리 DART corpCode는 `null`이다. 예시 원천의 `fixture:*` 계정 매핑을 실제 기업의 검증된 XBRL 매핑으로 재사용하지 않는다.
-- `data/fixtures/financials.ts`의 자체 작성 수치를 `server/repositories/fixture-financial-repository.ts`가 Zod 검증 후 정규화한다. fixture 외 source와 실제 접수번호/원문 URL을 허용하지 않는다. 실제 DART adapter, 원천 hash, 회사별 계정 검토와 공개 cache는 후속 단계다.
+- `data/fixtures/financials.ts`의 자체 작성 수치를 `server/repositories/fixture-financial-repository.ts`가 Zod 검증 후 정규화한다. fixture 외 source와 실제 접수번호/원문 URL을 허용하지 않는다. P2-B의 별도 로컬 도구가 실제 DART adapter와 원천 hash/검토 계약을 담당하며 공개 cache는 P4다.
 - 재무·공시는 서버 컴포넌트가 조회하여 `StockDetail`의 ReactNode 슬롯에 전달한다. 원천 파일과 repository는 브라우저 import에 포함하지 않는다. 시장 store에서 재무 조회를 호출하거나 시세 틱으로 무효화하지 않는다.
 - 재무 자료가 동기적인 로컬 fixture인 이번 단계에서는 별도 HTTP API/TanStack Query/Recharts를 추가하지 않았다. 서버 Suspense/오류 UI, 클라이언트 URL 필터와 정적 HTML/CSS 막대로 범위를 제한한다. 향후 비동기 캐시 조회와 상호작용 요구에 맞춰 해당 의존성을 도입한다. 금액을 Number로 바꾸지 않고 BigInt로 제한된 표시 비율만 계산한다.
 - `tab=financials|filings`, `basis=CFS|OFS`, `view=annual|quarter`, `year=2023|2024|2025`를 추가했다. 잘못되거나 중복된 필터는 기본값으로 redirect한다. 미제공인 기준은 그대로 유지하며 다른 기준으로 대체하지 않는다.
 - 각 수치의 펼치기에서 정확한 원 금액, 기간, 연결/별도, 예시 원천행과 정정 버전, 계산 사유를 제공한다. 예시 자료의 날짜는 작성일/예시 제출일로 표시하고 실제 수집일과 혼동하지 않는다. 공시는 공식 검색 사이트 링크만 제공하며 가짜 접수번호로 원문을 만들지 않는다.
+
+## P2-B 수집 도구 계약 (2026-09-30 · 실행 미검증)
+
+- `tools/dart/sync.ts`와 `review.ts`는 Node 24가 TypeScript를 직접 읽는 로컬 CLI다. 명시적인 `.ts` import를 위해 `allowImportingTsExtensions`를 사용한다. Next route/브라우저에서 import하지 않으며 웹의 fixture repository는 그대로 유지한다.
+- `client.ts`는 고정 DART origin/네 경로, 단일 요청, 700ms 간격, timeout/취소, 업무 상태별 오류, 제한된 일시 오류 재시도를 담당한다. `collect.ts`는 회사·공시 페이지·재무 응답을 검증하고 보고서별 원천 후보를 만든다.
+- `store.ts`는 콘텐츠 SHA-256 원본과 실행 상태를 분리한다. 요청 전 예산 사용을 기록하고, 성공한 작업 단위로 체크포인트를 저장한다. 전역 로컬 잠금으로 중복 실행을 막으며 상태 파일은 임시 파일 후 rename한다. 새 실행 ID는 기존 원본과 정정 버전을 보존한다.
+- `corporations.ts`는 ZIP에서 경로가 없는 `CORPCODE.xml` 한 항목만 메모리로 읽는다. 압축 응답 20MiB/해제 XML 100MiB, 최대 50만 행, XML DTD·엔티티 처리 차단과 문자열 코드 검증을 둔다. 파서는 CLI 전용 devDependency `fflate 0.8.3`, `fast-xml-parser 5.11.2`이며 둘 다 MIT다.
+- `review-model.ts`의 매핑은 원문을 대조한 정확한 원천 행을 보고서 해시에 결합한다. 검토 기록/원본/후보가 맞아야 명시적 DTO를 내보낸다. fixture 계정이나 추정 XBRL 이름을 실제 계정으로 재사용하지 않는다. 해시 검사는 로컬 파일 간 결합을 확인하는 수단이며 공급자의 전자서명이나 수동 검토의 진실성을 증명하지 않는다.
+- 현재 실제 DTO는 검토된 보고 금액과 누적 금액을 구분하는 수집 산출물이다. 실제 자료의 Q4/CF 단일 분기 파생과 웹 repository 연결은 실제 원천 검증 이후에 진행한다. 12월 결산·KRW 외의 데이터는 내보내기 지원 범위 밖이다.
+- 키/원본 URL/원천 오류를 로그에 출력하지 않는다. `.env.local`은 명시적으로 로딩하고 public/Vercel/CI에서는 실제 도구 실행을 거부한다. 키·원천·검토 산출물·공개 캐시 적재를 Git 커밋이나 자동 배포에 포함하지 않는다.

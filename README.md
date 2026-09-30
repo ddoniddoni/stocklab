@@ -1,6 +1,6 @@
 # StockLab
 
-키 없이 실행되는 국내 주식 리서치 UI입니다. **P0 / P1-A / P1-B**에 이어 **P2-A 예시 재무·공시 코드를 추가했으며, P2-A 실행 검증은 아직 하지 않았습니다.** 삼성전자·SK하이닉스·NAVER·현대자동차·LG전자 5종목을 탐색합니다. 시세는 합성이고 재무·공시는 직접 작성한 예시이며, 실제 주가나 기업 실적이 아닙니다.
+키 없이 실행되는 국내 주식 리서치 UI입니다. **P0 / P1-A / P1-B**에 이어 **P2-A 예시 재무·공시와 P2-B 로컬 DART 수집 도구 코드를 추가했으며, 두 단계의 실행 검증은 아직 하지 않았습니다.** 삼성전자·SK하이닉스·NAVER·현대자동차·LG전자 5종목을 탐색합니다. 웹 화면의 시세는 합성이고 재무·공시는 직접 작성한 예시이며, 실제 주가나 기업 실적이 아닙니다.
 
 ## 실행
 
@@ -40,9 +40,30 @@ E2E는 production build를 먼저 만든 뒤 실행합니다. 자체적으로 31
 
 기본 설정은 `synthetic / fixture / local`입니다. 재무의 fixture 모드는 **예시 재무정보 — 실제 기업 실적이 아닙니다** 표시를 유지합니다. 아직 구현하지 않은 다른 모드는 실행을 거부합니다. `APP_ENV=public` 또는 `VERCEL=1`에서 외부 수집 키/한투 브리지 설정을 차단합니다.
 
+## 로컬 DART 수집 도구
+
+`data:sync`는 지원 종목 하나·사업연도 하나·연결/별도 한 기준을 수집합니다. 고유번호 ZIP과 기업 개황, 정기공시 목록, 선택한 전체 재무제표를 로컬에 저장합니다. 실제 키 설정과 수집·원문 대조는 아직 수행하지 않았습니다.
+
+```bash
+# 계획만 표시: 키·외부 호출·파일 쓰기 없음
+npm run data:sync -- --symbol 005930 --year 2025 --reports 11014,11011 --run samsung-2025-cfs --dry-run
+
+# 로컬 .env.local의 DART_API_KEY 설정 후 실행하는 실제 수집 명령
+npm run data:sync -- --symbol 005930 --year 2025 --reports 11014,11011 --run samsung-2025-cfs --max-requests 30
+
+# 실패/중단 시 저장된 범위와 요청 예산으로 이어서 수집
+npm run data:sync -- --run samsung-2025-cfs --resume
+
+# 원문 대조 양식 생성 → review.json 직접 작성 → 검토된 로컬 DTO 생성
+npm run data:review -- --run samsung-2025-cfs --prepare
+npm run data:review -- --run samsung-2025-cfs --export
+```
+
+원본은 `data/raw/dart/`, 실행 상태·후보·검토 기록·내보내기는 `data/private/dart/`에 저장되며 모두 Git에서 제외됩니다. 내보내기는 웹 앱의 모드를 바꾸거나 공개 캐시에 배포하지 않습니다. 설정, 재개와 검토 양식 작성법은 [DART 수집 절차](docs/03_DATA_AND_INTEGRATIONS.md#54-p2-b-로컬-수집과-원문-대조-절차)를 참고하세요.
+
 ## 범위와 검증
 
-P2-A는 사용자 지시에 따라 테스트·린트·타입 검사·빌드·React Doctor·브라우저 검증을 실행하지 않은 상태입니다. 아래 P1-B 결과는 P2-A의 검증 결과가 아닙니다. 실제 DART 수집과 기업별 계정 매핑/원문 대조는 P2-B에 남아 있습니다.
+P2-A와 P2-B 도구는 사용자 지시에 따라 테스트·린트·타입 검사·빌드·React Doctor·브라우저 검증을 실행하지 않은 상태입니다. 새 CLI의 dry-run도 실행하지 않았습니다. 아래 P1-B 결과는 이후 변경의 검증 결과가 아닙니다. 실제 DART 수집과 기업별 계정 매핑/원문 대조, 실제 데이터의 웹 연결은 남아 있습니다.
 
 2026-09-30 P1-B: Node 24.21.0에서 typecheck, lint, unit 44개, Chromium desktop/mobile E2E 10개, build를 실제로 실행했습니다. P0/P1-A의 npm ci 기록은 진행 문서에 보존합니다. 상세 결과/실패 수정/제한/선정 버전은 [진행 기록](docs/05_QUALITY_AND_PROGRESS.md)을 확인하세요.
 
@@ -54,4 +75,4 @@ KIS/DART/Supabase 연동, 관심종목의 영구 저장/노트 저장, 원격 DB
 
 ## Git Flow
 
-`develop`은 통합 브랜치, `main`은 안정 릴리스 브랜치입니다. 사용자 상시 지시에 따라 새 개발 작업은 **최신 develop → 작업 브랜치 생성·전환 → 구현 → 커밋·작업 브랜치 푸시 → develop 병합·푸시** 순서로 마칩니다. 검증 명령은 별도 요청 시에만 실행하고 미검증 상태를 기록합니다. P2-A는 `feature/p2a-financial-fixtures`에서 develop에 통합했으며 실행 미검증 상태입니다. main 병합·릴리스, PR 생성과 배포는 별도 요청이 필요하며, 일반 작업 PR의 대상은 `develop`, 안정 릴리스는 `develop → main`입니다.
+`develop`은 통합 브랜치, `main`은 안정 릴리스 브랜치입니다. 사용자 상시 지시에 따라 새 개발 작업은 **최신 develop → 작업 브랜치 생성·전환 → 구현 → 커밋·작업 브랜치 푸시 → develop 병합·푸시** 순서로 마칩니다. 검증 명령은 별도 요청 시에만 실행하고 미검증 상태를 기록합니다. P2-A와 P2-B 도구 코드는 각각의 feature 브랜치에서 develop에 통합했으며 실행 미검증 상태입니다. main 병합·릴리스, PR 생성과 배포는 별도 요청이 필요하며, 일반 작업 PR의 대상은 `develop`, 안정 릴리스는 `develop → main`입니다.
