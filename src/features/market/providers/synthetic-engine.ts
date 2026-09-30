@@ -1,11 +1,11 @@
-import { aggregateTrade } from "@/domain/candles";
+import { aggregateTrade } from "../../../domain/candles.ts";
 import {
   orderBookSchema,
   quoteSchema,
   tradeSchema,
   type MarketSnapshot,
-} from "@/domain/market";
-import { instrument, type Instrument } from "@/domain/instruments";
+} from "../../../domain/market.ts";
+import { instrument, type Instrument } from "../../../domain/instruments.ts";
 export const START_MS = Date.UTC(2026, 0, 5, 0, 0, 0);
 export const TRADE_LIMIT = 500;
 export const TICK_SIZE = 100; // A simulation rule, not a full KRX tick-size implementation.
@@ -21,6 +21,9 @@ function randomFromSeed(seed: string) {
   };
 }
 export class SyntheticEngine {
+  readonly seed: string;
+  readonly sessionId: string;
+  private readonly stock: Instrument;
   private readonly random: () => number;
   private clock = START_MS;
   private sequence = 0;
@@ -28,10 +31,13 @@ export class SyntheticEngine {
   private volume = 0n;
   private current!: MarketSnapshot;
   constructor(
-    readonly seed: string,
-    readonly sessionId: string,
-    private readonly stock: Instrument = instrument,
+    seed: string,
+    sessionId: string,
+    stock: Instrument = instrument,
   ) {
+    this.seed = seed;
+    this.sessionId = sessionId;
+    this.stock = stock;
     this.lastPrice = stock.initialPrice;
     this.random = randomFromSeed(seed);
     // Every history candle is aggregated from the same authored trade stream.

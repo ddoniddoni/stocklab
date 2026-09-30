@@ -125,8 +125,8 @@ F04/F05/F06은 반드시 자동화 테스트로 만든다. 계산 함수 테스�
 
 | 실험 | 조건 | 기록할 값 |
 |---|---|---|
-| 기본 시세 | 5개 종목, 합성 100 events/s, 60초 | commit 횟수, main-thread long tasks, 메모리 |
-| 높은 입력 | 합성 500/1,000 events/s, 각 60초 | 처리량, backlog, 집계 정합성, 입력 지연 |
+| 기본 시세 | 5개 종목, 합성 체결 합계 100건/초, 60초 | commit 횟수, main-thread long tasks, 메모리 |
+| 높은 입력 | 합성 체결 합계 500/1,000건/초, 각 60초 | 처리량, backlog, 집계 정합성, 입력 지연 |
 | 장시간 | 기본 시나리오 30분 | 누수 추세, 버퍼 크기, listener 수 |
 | 화면 이동 | 상세↔홈 30회 | 소켓/Worker/타이머 잔존 개수 |
 | 많은 행 | 합성 10,000행 데이터 테이블 | 스크롤 반응, virtualization 전후 |
@@ -151,6 +151,38 @@ F04/F05/F06은 반드시 자동화 테스트로 만든다. 계산 함수 테스�
 ```
 
 Worker를 도입했다는 사실만으로 최적화되었다고 결론 내리지 않는다. serialization과 main-thread 업데이트 비용까지 측정한다. 실제 개선이 없으면 복잡한 구조를 제거하거나 목적을 다시 정의한다.
+
+### P6-B 합성 엔진 측정 도구 계약
+
+2026-09-30 작성, **도구 자체와 모든 측정은 미실행**. 위 계획 중 합성 엔진 처리와 정합성 측정용 CLI만 준비했다. React commit/long task/입력 지연, 실제 앱 구독·페이지 이동과 브라우저 메모리는 후속 계측 범위다.
+
+- 실행 진입점은 `npm run test:perf -- ...`이며 `.nvmrc`의 Node 24를 사용한다. 기본값은 100/500/1000 각각 60초 1회다. `--rates`는 이 세 값 중 중복 없는 목록, `--seconds`는 1~1800, `--repeats`는 1~5이고 전체 예정 시간은 1800초 이하로 제한한다. 사후 대조와 최대 5초의 잔여 처리 시간은 별도로 추가된다.
+- `--seed`와 `--run`은 영문·숫자·하이픈·밑줄 1~64자이며 첫 글자는 영문/숫자다. 기본 seed는 `stocklab-perf-v1`, 실행 ID는 매번 새로 생성한다. `--label`은 장비/실행 조건을 남기는 100자 이하의 한 줄 메모다. `--help`도 이번 개발에서는 실행하지 않았다.
+- 입력 단위는 **5종목 합계 체결/초**다. 기존 명세의 events/s를 이 CLI에서는 입력 체결로 구체화했다. 한 체결당 quote와 book도 한 개씩 생성하므로 세 payload를 모두 세는 값과 다르다. 1000 체결/초는 종목별 200 체결/초이며 실제 한투 관측치가 아니다.
+- 고정 순서로 한 종목씩 입력한다. 종목별 가상 시간 간격은 `1000 × 5 / rate`ms이고 receipt 시각도 가상 시각으로 고정한다. 다른 rate에서는 RNG 순서는 같아도 캔들 시간과 집계가 달라지므로 최종 해시는 같은 rate/seed/처리 건수끼리 비교한다.
+- 측정은 `SyntheticEngine`의 생성·Zod 검증·전체 캔들 집계와 계측 스케줄러를 포함한다. 앱의 Provider/store/구독/React 렌더링·외부 API를 실행하지 않는다. 초기 160체결×5종목의 합성 이력 생성 시간은 별도 `initializationMs`에 기록하고 본 측정에서 제외한다.
+- 스케줄러는 monotonic 시각으로 도착 예정 건수를 계산하고 최대 100건/5ms씩 처리한다. 정상 대기는 10ms, 대기가 남으면 1ms 후 이어서 처리한다. 밀린 체결은 건수로만 보관하고 건너뛰지 않는다. 실행 시간 뒤 최대 5초까지 처리하며 남으면 `deadline`으로 기록한다. 5ms는 입력 사이의 양보 기준이며 단일 연산을 선점하는 보장은 아니다.
+
+| 보고서 필드 | 뜻과 한계 |
+|---|---|
+| `processedTrades / plannedTrades` | 실제 생성·집계한 입력 수 / 전체 예정 입력 수. 초기 이력 제외 |
+| `processedWithinWindow` | 설정 시간 안에 완료한 체결 수. 이후 잔여 처리와 구분 |
+| `pendingTrades / notYetDueTrades` | 종료 시 도착 예정 시각이 지난 미처리 입력 / 아직 시각이 오지 않은 입력 |
+| `maxPendingTrades` | 스케줄러가 관찰한 최대 미처리 예정 입력 수. 실제 소켓 큐 크기가 아님 |
+| `observedTradesPerSecond` | 처리 건수 / 잔여 처리 포함 실제 경과 시간. 최대 처리 능력 추정치가 아님 |
+| `scheduledCompletionLagMs` | 예정 입력 시각부터 생성·집계 완료까지의 히스토그램. UI 입력 지연이 아님 |
+| `eventLoopDelayMs / eventLoopUtilization` | 10ms 해상도 Node monitor의 원래 지연 분포와 utilization. 브라우저 long task로 환산하지 않음 |
+| `cpuMs / batchWorkMs` | 측정 구간의 전체 프로세스 user/system CPU 시간 / 배치 처리·계측 시간 |
+| `memoryBytes.samples` | 시작·약 1초 간격·종료의 RSS/heap/external/ArrayBuffer bytes와 진행 상태. 순간 peak/누수 판정이 아님 |
+| `buffers` | 모든 입력 후 관찰한 종목별 체결/캔들 버퍼 최댓값과 500/240 상한 위반 여부 |
+| `integrity` | 측정 밖의 동일 입력 재생 SHA-256과 별도 OHLC/BigInt 누적 집계·최종 가격 대조. 초기 이력 자체는 동일 기준에서 시작 |
+| `browser` | `measured: false`, commit/long task/input latency는 `null`. 0이나 통과로 표시하지 않음 |
+
+- 보고서는 Git 제외 `test-results/performance/<실행 ID>/report.json`과 `report.md`다. 원시 체결을 파일로 저장하지 않는다. 실행 ID 폴더는 독점 생성하고 기존 파일을 덮어쓰지 않는다. 시작·각 사례 종료·최종 종료에 저장하며 JSON을 기준으로 읽는다. 각 파일은 임시 파일 후 rename하므로 강제 종료 때 Markdown만 이전 버전일 수 있다.
+- Ctrl+C/SIGTERM은 대기와 사후 대조를 취소하고 측정 중간 결과를 기록한다. 모든 사례 완료 및 정합성/상한 만족은 exit 0, 실패/시간 초과/불일치는 1, SIGINT는 130, SIGTERM은 143이다. OS 강제 종료나 쓰기 실패의 부분 저장을 보장하지 않는다. `running` 또는 사례 수 부족은 완료 보고서가 아니다.
+- 각 반복은 같은 프로세스에서 순차 실행하며 JIT/GC·이전 보고서 보관·계측 비용이 섞인다. CPU/OS/Node/코드 SHA/dirty/label을 함께 기록하고, 동일 장비·seed·rate·기간·반복/실행 조건으로만 전후를 비교한다. `completed`/`matched`는 이 도구의 실행/대조 상태이며 목표 성능이나 릴리스 통과 상태가 아니다.
+- 키·환경파일·외부 API·사용자 DB를 사용하지 않으며 build/start/CI에서 자동 실행하지 않는다. 새 의존성이나 Worker/가상화를 추가하지 않았다. `verify` 진입점과 브라우저 계측은 아직 미구현이다.
+- 공식 근거(2026-09-30): [Node 24 성능 API](https://nodejs.org/docs/latest-v24.x/api/perf_hooks.html), [메모리 측정](https://nodejs.org/docs/latest-v24.x/api/process.html#processmemoryusage), [TypeScript 실행 제약](https://nodejs.org/docs/latest-v24.x/api/typescript.html). 문서 열람은 실행 검증이 아니다.
 
 ## 5. 공개 릴리스 체크리스트
 
@@ -238,13 +270,14 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 | 패키지 버전/Node 버전 선정 | Node 24.21.0 LTS / npm 11.17.0, 아래 작업 기록 참조 |
 | 합성 시세 Provider | 5종목, 공유 시계/배속/숨김 정지/전체 초기화/URL 복원 |
 | 시세 읽기 | P6-A 화면 고정·한 번 반영·자동 갱신 복귀, 전체 캔들 수치표 코드 작성. 실행/접근성 미검증 |
+| 합성 부하 측정 도구 | P6-B test:perf CLI·Node 지표/정합성·보고서 코드 작성. 도움말/측정/대조 실행 0회, 측정값 없음 |
 | 실제 한투 키 발급/인증/수신 | P5 브리지·조회/수신/UI 코드 작성. 실제 키 확인·인증·시세 호출·수신 미실행 |
 | DART 키/실제 수집/원문 대조 | P2-B 로컬 수집/검토 도구 코드 작성. 키 준비 상태 미확인, 실제 수집·원문 대조 미실행 |
 | Supabase 생성/migration/RLS | P4 migration SQL 파일 작성. 프로젝트 생성·로컬/원격 적용·RLS 실행 검증 미실행 |
 | 공개 재무 자료 | manifest는 fixture/빈 목록. 실제 공개 DTO 생성·등록·DB 적재 0건 |
-| 테스트/lint/typecheck/build | P1-B 당시 unit 44개/E2E 10개 및 기본 검사 통과. P2-A/P2-B/P3/P4/P5/P6-A는 사용자 지시로 전부 미실행 |
+| 테스트/lint/typecheck/build | P1-B 당시 unit 44개/E2E 10개 및 기본 검사 통과. P2-A/P2-B/P3/P4/P5/P6-A/P6-B는 사용자 지시로 전부 미실행 |
 | Vercel 배포 | 미실행 |
-| Git Flow | P0~P5/P6-A 코드는 develop에 통합. P2-A/P2-B/P3/P4/P5/P6-A는 실행 미검증 유지. main 릴리스 미실행 |
+| Git Flow | P0~P5/P6-A 코드는 develop에 통합. P6-B는 feature/p6-synthetic-performance-runner에서 작성, 커밋·푸시·develop 통합 예정. 실행 미검증 유지 |
 
 ### 7.2 단계 기록
 
@@ -260,8 +293,9 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 | P3 | implemented_unverified | IndexedDB 관심종목/노트, fixture 기업 비교, 충돌·백업·초안 처리 코드 | U01~U10/F16, 기본 검사/UI/다중 탭/저장소 장애 검증과 기존 URL 선택 E2E 갱신 |
 | P4 | implemented_unverified | 검토 DTO/JSON·Supabase 조회/GET API/SQL·공개 설정과 빌드 검사 코드 | 실제 공개 자료, DB 적용/RLS, API miss·입력 제한, 빌드/trace/Network 검증 |
 | P5 | implemented_unverified | 개인 로컬 브리지·티켓/REST API·KRX 파서·공유 구독·현재가/체결/호가/일봉 UI 코드 | 실제 인증/수신, 계정 한도·교차/빈 호가 대조, 경합/cleanup/다중 탭/공개 차단 검증 |
-| P6 | in_progress | P6-A 접근성 기능 코드 작성 | 성능 시나리오/측정 도구, 실행/접근성 검증과 릴리스 게이트 |
+| P6 | in_progress | P6-A 접근성 기능, P6-B Node 합성 부하 측정 도구 코드 작성 | 브라우저 계측/verify 진입점, 실행·측정/접근성 검증과 릴리스 게이트 |
 | P6-A | implemented_unverified | 시세 표시 고정/한 번 반영/자동 복귀, 전체 캔들 수치표 코드 | 표시/수신 분리, 라우트/visibility/cleanup, 모바일/키보드/보조공학 확인 |
+| P6-B | implemented_unverified | test:perf 입력 시나리오·Node 지표·사후 집계 대조·JSON/Markdown 보고서 | Node 24 CLI/취소·기한·정합성/보고서, 웹 호환/공개 추적과 실제 측정 검증 |
 | P7 | not_started | 선택 | 클라우드 개인 동기화 |
 
 ### 7.3 확정 설계 결정
@@ -301,6 +335,8 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 | ADR-31 | 일봉은 원주가/90일 구간 요청/최대 날짜 차이 366일/partial 표시 | 100건 한도와 달력 미대조를 보존, 실제 분봉과 병합하지 않음 |
 | ADR-32 | 화면 고정은 원천 수신/집계와 분리하고 현재 탭의 bounded snapshot 한 벌만 보관 | 읽는 동안 숫자/목록/상태를 유지하고 고정 시각을 명시. 자동 복귀는 현재 값으로 이동하며 저장/재배포하지 않음 |
 | ADR-33 | 전체 캔들 수치표는 화면 고정 상태에서 최신순 20행씩 제공 | 값/행이 바뀌지 않는 텍스트 대체 정보. 실제 table/caption/행·열 header를 사용하며 틱마다 읽기 알림을 추가하지 않음 |
+| ADR-34 | P6-B는 기존 엔진을 직접 구동하는 opt-in Node CLI, 입력 단위는 5종목 합계 체결/초 | 실제 한투/앱 Provider/브라우저 성능과 측정 범위를 혼동하지 않음. 브라우저 지표는 null 유지 |
+| ADR-35 | 사후 재생/독립 집계 대조와 보고서 쓰기는 본 측정 구간 밖 | 처리량에 대조 비용을 섞지 않고 종료/취소/시간 초과/미측정을 보고서에 구분 |
 
 ### 7.4 검증이 필요한 외부 항목
 
@@ -314,6 +350,29 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 위 항목이 미확인이라고 전체 개발을 멈추지는 않는다. 키 없는 합성 UI, parser 테스트, 공개 차단 로직을 먼저 만들고 해당 연동만 미검증 상태로 남긴다.
 
 ## 8. 작업 종료 기록
+
+### 2026-09-30 · P6-B 합성 시세 부하 측정 CLI (실행 미검증)
+
+**범위와 Git Flow**
+
+- 깨끗한 `develop` / `a1975a4`에서 origin fetch 후 차이 0을 확인하고 편집 전에 `feature/p6-synthetic-performance-runner`를 생성했다. 상시 지시에 따라 관련 파일 커밋·작업 브랜치 푸시·develop 병합/푸시까지 수행한다.
+- 다음 기능은 앞서 예고한 P6 측정 도구 작성으로 제한했다. 기존 검증 금지 지시는 유지하며 CLI/정합성 코드 작성과 실행을 구분한다. P6 전체는 in_progress, P6-B는 implemented_unverified다.
+
+**작성한 내용**
+
+- `tools/perf/options.ts`/`scenario.ts`: 100/500/1000 체결/초·5종목·seed 기반 결정론적 입력, 시간/반복/ID 인자 제한, 별도 측정 스케줄러, bounded 엔진 상태.
+- `measure.ts`: 예정 건수/처리 건수/미처리와 미도착 구분, 실제 경과 처리량·완료 지연 히스토그램·Node 루프/CPU·메모리 표본·버퍼 상한. 취소 가능한 대기와 최대 5초 잔여 처리, monitor 정리 경로.
+- `audit.ts`: 측정이 끝난 뒤 같은 입력을 재생한 상태 해시와 별도 mutable OHLC/BigInt 누적 거래량·최종 가격 대조. 초기 이력은 독립 검증하지 않으며 알고리즘/앱 전체 검증을 주장하지 않는다.
+- `report.ts`/`run.ts`: Node 24 경계, 코드/장비/옵션·개별 사례·미측정 브라우저 필드, Git 제외 JSON/Markdown 보고서, 기존 ID 보호, 취소/실패 결과와 종료 코드. 환경파일·키·외부 API·원격 DB는 사용하지 않는다.
+- 엔진/캔들 집계의 직접 import 경로와 엔진 constructor 필드 선언만 Node type stripping에 맞췄다. 생산 집계 알고리즘과 웹 Provider/store/UI는 바꾸지 않았다. npm test:perf 진입점과 Next trace의 도구/보고서 제외를 추가했고 새 의존성/lockfile 변경은 없다.
+- README·문서 02/04와 이 문서의 측정 계약을 갱신했다. 이벤트 단위를 체결로 명시하고 UI 지표/성능 달성/릴리스 판정과 구분했다.
+
+**읽은 근거, 미실행과 다음 단계**
+
+- Node 24 공식 perf_hooks/process/TypeScript 문서와 설치된 타입 선언, 기존 엔진/집계/검증 코드를 읽었다. 소스·diff·Git 상태를 확인하고 파일을 편집했다. 공식 링크와 지표 해석은 §4에 있다.
+- **사용자 지시로 test:perf/help·정합성 대조·성능 측정, unit/E2E·lint/typecheck/build·React Doctor·check:public·개발 서버/브라우저 확인을 전부 미실행했다.** 계측 코드는 작성했으나 회귀 테스트는 추가/실행하지 않았다. 측정 보고서/성능 수치를 생성하거나 기존 통과 기록을 소급 적용하지 않는다.
+- 남은 확인: Node 24의 TS 경로/문법 및 웹 import 호환, invalid/중복 인자·기존 ID·출력 실패, 취소/시간 초과/불일치·신호 정리, 입력률·모든 체결의 집계와 해시 재현, 메모리 표본/히스토그램 단위, 빌드 추적 제외. 장시간 실행·브라우저 지표·전후 비교는 아직 수행하지 않았다.
+- **다음 단계:** P6 브라우저 계측과 검증 진입점 준비. 도구 실행/성능 측정/접근성·릴리스 게이트 검증은 명시 요청 후 수행한다. 측정 근거 없이 Worker/가상화로 확대하거나 P7/릴리스로 넘어가지 않는다.
 
 ### 2026-09-30 · P6-A 시세 화면 고정·전체 캔들 수치표 (실행 미검증)
 
