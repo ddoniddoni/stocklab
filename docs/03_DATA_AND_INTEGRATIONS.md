@@ -400,6 +400,27 @@ export type FinancialMetric = {
 
 MVP 게스트 로컬 store는 user_id 대신 기기 내 namespace로 분리한다. 클라우드 동기화를 활성화할 때만 auth.users FK가 생긴다. 로컬 데이터를 공개 Supabase 공용 계정에 저장하지 않는다.
 
+#### P3 로컬 저장 계약 (코드 작성 · 실행 미검증)
+
+현재 IndexedDB 구현은 위 후속 DB 테이블과 구분되는 `schemaVersion=1`, `namespace=guest`의 문서다. 같은 origin/브라우저 프로필에서만 공유된다. 최초 watchlist/notes는 빈 배열이며 개인 기록을 예시로 자동 채우지 않는다.
+
+| 데이터 | 필드와 한도 |
+|---|---|
+| 저장 문서 | generation UUID, revision, watchVersion, watchlist, notes |
+| 관심종목 | 지원하는 6자리 문자열 목록, 중복 금지, 배열 순서 보존 |
+| 노트 | UUID, symbol, title 1~120자, thesis/evidence/risks/review 각각 최대 10,000자, checklist, version, createdAt/updatedAt |
+| 체크리스트 | UUID/text/done, 최대 30개, text 최대 300자 |
+| 전체 저장 | 최대 노트 200개, 문서 UTF-8 직렬화 최대 2MiB |
+| JSON 백업 | format=stocklab-personal, schemaVersion=1, exportedAt, watchlist, notes만 허용, 최대 2MiB |
+
+저장/가져오기 경계는 strict 스키마로 추가 필드, 잘못된 식별자·날짜·길이·중복을 거부한다. 미지원 schemaVersion이나 손상된 DB를 빈 데이터로 조용히 덮어쓰지 않는다. 아직 별도 과거 노트 스냅샷/되돌리기는 없으며 version은 쓰기 충돌 검사용이다.
+
+JSON 내보내기는 저장된 기록만 담는다. 저장 전 초안은 별도의 일반 텍스트 파일로 내보낼 수 있다. API 키/시세/원본 응답/캐시 필드는 저장 및 백업 계약에 없다. 노트 본문은 일반 텍스트이며 HTML로 렌더링하지 않는다.
+
+가져오기는 파일의 크기와 스키마를 확인한 뒤 종목/노트 개수를 미리 보여준다. 사용자가 추가를 선택하면 기존 watchlist와 합치고 노트는 새 UUID/version 1의 사본으로 추가한다. 미리보기 이후 데이터가 바뀌었으면 revision 충돌로 중단한다. 초기화는 명시적인 화면 확인 후 하나의 트랜잭션으로 새 generation과 빈 배열을 저장한다. 실제 브라우저 데이터 삭제·초기화 작업을 이번 개발에서 실행하지 않았다.
+
+저장 실패와 다른 탭의 수정 충돌을 구분한다. 충돌한 본문은 자동으로 덮어쓰지 않고 초안으로 유지하며 최신본 불러오기 또는 사본 저장을 선택한다. 보관할 초안은 닫기 전에 내보낼 수 있다. 브라우저 저장 용량/권한, 트랜잭션 중단과 탭 종료는 아직 실행 검증하지 않았다.
+
 ### 7.3 RLS 요구사항
 
 - 공용 테이블은 검토된 published 데이터만 읽게 한다. anon/authenticated 쓰기 차단.

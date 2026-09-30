@@ -3,6 +3,7 @@ import { StockSearch } from "@/features/search/stock-search";
 import { HomeMarket } from "@/features/market/components/home-market";
 import { MarketControls } from "@/features/market/components/market-controls";
 import { SourceNotice } from "@/features/market/components/source-notice";
+import { RecentNotes } from "@/features/personal/personal-controls";
 export default function Home() {
   return (
     <>
@@ -30,6 +31,7 @@ export default function Home() {
           <HomeMarket />
         </Suspense>
       </div>
+      <RecentNotes />
       <section className="session-guide">
         <div>
           <span className="guide-line" />
