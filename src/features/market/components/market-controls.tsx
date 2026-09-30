@@ -1,6 +1,7 @@
 "use client";
-import { useSession } from "../market-context";
+import { useMarketReading, useSession } from "../market-context";
 import { time } from "@/lib/formatting/market";
+import { MarketReadingControls } from "./market-reading-controls";
 const labels = {
   idle: "준비 중",
   connecting: "연결 중",
@@ -12,25 +13,30 @@ const labels = {
   "market-closed": "장 마감",
 };
 export function MarketControls() {
+  return <><MarketReadingControls /><PlaybackControls /></>;
+}
+function PlaybackControls() {
   const { snapshot, mode, pause, resume, reset, setSpeed } = useSession();
+  const { snapshot: reading } = useMarketReading();
   if (mode === "kis-private") return <div className="control-bar">
-    <div className={`connection ${snapshot.status}`} role="status"><span className="status-dot" />{snapshot.status === "live" ? "KRX 시세 수신 중" : labels[snapshot.status]}</div>
-    <span className="virtual-clock">마지막 수신 {snapshot.eventTimeMs ? time(snapshot.eventTimeMs) : "—"} <small>KST</small></span>
+    <div className={`connection ${reading.frozen ? "paused" : snapshot.status}`} role="status"><span className="status-dot" />{reading.frozen ? "고정 시점: " : ""}{snapshot.status === "live" ? "KRX 시세 수신 중" : labels[snapshot.status]}</div>
+    <span className="virtual-clock">{reading.frozen ? "고정 당시 마지막 수신" : "마지막 수신"} {snapshot.eventTimeMs ? time(snapshot.eventTimeMs) : "—"} <small>KST</small></span>
     <div className="control-buttons">
       <button type="button" onClick={pause} disabled={snapshot.manualPaused}>수신 중단</button>
       <button type="button" onClick={resume}>재연결</button>
     </div>
-    {snapshot.message ? <p className="stream-message" role="status">{snapshot.message}</p> : null}
+    {snapshot.message ? <p className="stream-message" role="status">{reading.frozen ? "고정 당시 안내: " : ""}{snapshot.message}</p> : null}
   </div>;
   const paused = snapshot.manualPaused;
   return (
     <div className="control-bar">
-      <div className={`connection ${snapshot.status}`} role="status">
+      <div className={`connection ${reading.frozen ? "paused" : snapshot.status}`} role="status">
         <span className="status-dot" />
+        {reading.frozen ? "고정 시점: " : ""}
         {labels[snapshot.status]}
       </div>
       <span className="virtual-clock">
-        가상 시각{" "}
+        {reading.frozen ? "고정한 가상 시각" : "가상 시각"}{" "}
         <time data-testid="virtual-time">{time(snapshot.eventTimeMs)}</time>{" "}
         <small>KST</small>
       </span>
@@ -69,7 +75,7 @@ export function MarketControls() {
       ) : null}
       {snapshot.message ? (
         <p className="stream-message" role="status">
-          {snapshot.message}
+          {reading.frozen ? "고정 당시 안내: " : ""}{snapshot.message}
         </p>
       ) : null}
     </div>

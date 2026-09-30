@@ -29,10 +29,14 @@ export default function PriceChart({
   candles,
   sessionId,
   local = false,
+  frozen = false,
+  descriptionId,
 }: {
   candles: readonly Candle[];
   sessionId: string;
   local?: boolean;
+  frozen?: boolean;
+  descriptionId?: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const api = useRef<{
@@ -124,7 +128,8 @@ export default function PriceChart({
       ref={container}
       className="price-chart"
       role="img"
-      aria-label={`${local ? "KRX 수신 구간의" : "합성"} 1분 캔들 및 거래량 차트. 현재 캔들 수치는 아래 표에 제공됩니다.`}
+      aria-label={`${frozen ? "고정한 " : ""}${local ? "KRX 수신 구간의" : "합성"} 1분 캔들 및 거래량 차트. 마지막 캔들은 아래 표에, 전체 값은 수치표 보기에 제공됩니다.`}
+      aria-describedby={descriptionId}
     />
   );
 }

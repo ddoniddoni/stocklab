@@ -1,10 +1,10 @@
 import type { Trade } from "@/domain/market";
 import { number, time } from "@/lib/formatting/market";
-export function RecentTrades({ trades, local = false }: { trades: readonly Trade[]; local?: boolean }) {
+export function RecentTrades({ trades, local = false, frozen = false }: { trades: readonly Trade[]; local?: boolean; frozen?: boolean }) {
   return (
     <section className="panel trades-panel">
       <div className="panel-heading">
-        <h2>최근 체결</h2>
+        <h2>{frozen ? "고정한 최근 체결" : "최근 체결"}</h2>
         <span className="subtle">최근 {Math.min(200, trades.length)}건</span>
       </div>
       <div
@@ -31,7 +31,7 @@ export function RecentTrades({ trades, local = false }: { trades: readonly Trade
             </tr>
           </thead>
           <tbody>
-            {!trades.length ? <tr><td colSpan={3}>수신한 체결이 없습니다.</td></tr> : null}
+            {!trades.length ? <tr><td colSpan={3}>{frozen ? "고정한 시점에 체결이 없었습니다. 최신 값을 반영해 주세요." : "수신한 체결이 없습니다."}</td></tr> : null}
             {trades.slice(0, 200).map((trade) => (
               <tr key={`${trade.sessionId}:${trade.sequence}`}>
                 <td>{time(trade.eventTimeMs)}</td>
