@@ -3,7 +3,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { FinancialView } from "@/domain/financials/model";
-import type { MarketSnapshot } from "@/domain/market";
+import type { MarketViewSnapshot } from "@/domain/local-market";
 import { type Instrument } from "@/domain/instruments";
 import {
   detailHref,
@@ -16,6 +16,7 @@ import { MarketControls } from "./market-controls";
 import { OrderBookView } from "./order-book";
 import { RecentTrades } from "./recent-trades";
 import { SourceNotice } from "./source-notice";
+import { LocalHistory } from "./local-history";
 import { StockResearchActions, StorageStatus } from "@/features/personal/personal-controls";
 const PriceChart = dynamic(() => import("./price-chart"), {
   ssr: false,
@@ -38,6 +39,7 @@ export function StockDetail({
 }) {
   const { snapshot } = useMarket(stock.symbol);
   const { quote, orderBook, trades } = snapshot;
+  const local = snapshot.manifest.source === "kis-private";
   const isResearch = view.tab === "financials" || view.tab === "filings";
   return (
     <>
@@ -53,7 +55,7 @@ export function StockDetail({
           <div>
             <h1>{stock.name}</h1>
             <p>
-              {stock.symbol} <span>·</span> 보통주 <span>·</span> SIM
+              {stock.symbol} <span>·</span> 보통주 <span>·</span> {local ? "KRX" : "SIM"}
             </p>
           </div>
         </div>
@@ -61,6 +63,7 @@ export function StockDetail({
       </div>
       <StorageStatus />
       <StockQuote quote={quote} />
+      {local ? <p className="stream-message" role="status">{snapshot.status === "live" ? "이 종목의 시세를 수신하고 있습니다." : "이 종목의 최신 수신을 확인하지 못했습니다."} {snapshot.message}</p> : null}
       <MarketControls />
       <nav className="view-nav detail-nav" aria-label="상세 화면 보기">
         {(
@@ -97,7 +100,7 @@ export function StockDetail({
             scroll={false}
             aria-current={view.period === period ? "page" : undefined}
           >
-            {label}
+            {period === "session" && local ? "수신 구간" : label}
           </Link>
         ))}
         <small>집계 간격은 1분입니다.</small>
@@ -106,24 +109,26 @@ export function StockDetail({
         <div className="workspace-grid">
           <div className="chart-column">
             <CandlePanel snapshot={snapshot} period={view.period} />
-            <RecentTrades trades={trades} />
+            {local ? <LocalHistory key={stock.symbol} symbol={stock.symbol} /> : null}
+            <RecentTrades trades={trades} local={local} />
           </div>
-          <OrderBookView book={orderBook} lastPrice={quote.lastPrice} />
+          <OrderBookView book={orderBook} lastPrice={quote?.lastPrice ?? null} />
         </div>
       ) : view.tab === "orderbook" ? (
-        <OrderBookView book={orderBook} lastPrice={quote.lastPrice} />
+        <OrderBookView book={orderBook} lastPrice={quote?.lastPrice ?? null} />
       ) : (
-        <RecentTrades trades={trades} />
+        <RecentTrades trades={trades} local={local} />
       )}
       <p className="data-footer">
-        시세는 하나의 합성 세션에서 생성합니다. 재무·공시는 화면에 표시된 별도 출처의 자료이며,
-        합성 시세는 실제 주가가 아닙니다. 재무자료의 출처와 기준은 각 화면에서 확인하세요.
+        {local ? "시세는 한국투자증권 KRX의 개인 로컬 수신 자료입니다. 수신 이전·중단 구간은 집계에서 빠질 수 있습니다." : "시세는 하나의 합성 세션에서 생성하며 실제 주가가 아닙니다."} 재무·공시의 별도 출처와 기준은 각 화면에서 확인하세요.
       </p>
     </>
   );
 }
 
-function StockQuote({ quote }: { quote: MarketSnapshot["quote"] }) {
+function StockQuote({ quote }: { quote: MarketViewSnapshot["quote"] }) {
+  if (!quote) return <div className="quote-strip" role="status">표시할 시세가 없습니다. 연결 후 수신을 기다립니다.</div>;
+  const local = quote.source === "kis-private";
   return (
     <div
       className="quote-strip"
@@ -132,37 +137,39 @@ function StockQuote({ quote }: { quote: MarketSnapshot["quote"] }) {
       data-sequence={quote.sequence}
     >
       <div>
-        <p className="eyebrow">합성 현재가</p>
+        <p className="eyebrow">{local ? "KRX 현재가" : "합성 현재가"}</p>
         <div className="big-price" data-testid="last-price">
           {number(quote.lastPrice)}
           <span>원</span>
         </div>
         <p className={`price-change ${direction(quote.change ?? 0)}`}>
+          {quote.change !== null && quote.changePercent !== null ? <>
           {(quote.change ?? 0) >= 0 ? "▲" : "▼"} {signed(quote.change ?? 0)}원{" "}
           <span>
             ({(quote.changePercent ?? 0) >= 0 ? "+" : ""}
             {(quote.changePercent ?? 0).toFixed(2)}%)
           </span>
-          <small>합성 기준가 대비</small>
+          </> : "전일 대비 미제공"}
+          <small>{local ? "전일 대비" : "합성 기준가 대비"}</small>
         </p>
       </div>
       <dl className="quote-stats">
         <div>
-          <dt>합성 기준가</dt>
+          <dt>{local ? "전일 비교 기준가 (계산)" : "합성 기준가"}</dt>
           <dd>
-            {number(quote.previousClose ?? 0)}
+            {quote.previousClose === null ? "—" : number(quote.previousClose)}
             <small>원</small>
           </dd>
         </div>
         <div>
-          <dt>세션 누적 거래량</dt>
+          <dt>{local ? "원천 누적 거래량" : "세션 누적 거래량"}</dt>
           <dd>
-            {number(quote.cumulativeVolume ?? "0")}
+            {quote.cumulativeVolume === null ? "—" : number(quote.cumulativeVolume)}
             <small>주</small>
           </dd>
         </div>
         <div>
-          <dt>마지막 합성 체결</dt>
+          <dt>{local ? quote.timeBasis === "retrieved" ? "조회 시각 (체결 시각 미제공)" : "마지막 수신 체결" : "마지막 합성 체결"}</dt>
           <dd>
             {time(quote.eventTimeMs)}
             <small>KST</small>
@@ -176,14 +183,15 @@ function CandlePanel({
   snapshot,
   period,
 }: {
-  snapshot: MarketSnapshot;
+  snapshot: MarketViewSnapshot;
   period: DetailView["period"];
 }) {
   const { quote } = snapshot;
-  const candles = visibleCandles(snapshot.candles, period, quote.eventTimeMs);
+  const local = snapshot.manifest.source === "kis-private";
+  const candles = visibleCandles(snapshot.candles, period, quote?.eventTimeMs ?? 0);
   const last = candles.at(-1);
   const periodLabel = {
-    session: "데모 세션",
+    session: local ? "수신 구간" : "데모 세션",
     "30m": "최근 30분",
     "15m": "최근 15분",
   }[period];
@@ -199,10 +207,10 @@ function CandlePanel({
         </div>
       </div>
       {candles.length ? (
-        <PriceChart candles={candles} sessionId={quote.sessionId} />
+        <PriceChart candles={candles} sessionId={quote?.sessionId ?? "pending"} local={local} />
       ) : (
         <p className="chart-loading" role="status">
-          이 기간에는 합성 캔들이 없습니다.
+          {local ? "이 수신 구간에는 집계한 체결이 없습니다." : "이 기간에는 합성 캔들이 없습니다."}
         </p>
       )}
       {last ? (
@@ -229,7 +237,7 @@ function CandlePanel({
         </table>
       ) : null}
       <div className="panel-foot">
-        합성 체결을 모두 집계합니다. 붉은 캔들: 상승 · 푸른 캔들: 하락
+        {local ? "연결 이후 수신한 체결만 집계합니다. 중단·이동·숨김 구간은 복원하지 않습니다." : "합성 체결을 모두 집계합니다."} 붉은 캔들: 상승 · 푸른 캔들: 하락
       </div>
     </section>
   );

@@ -12,7 +12,16 @@ const labels = {
   "market-closed": "장 마감",
 };
 export function MarketControls() {
-  const { snapshot, pause, resume, reset, setSpeed } = useSession();
+  const { snapshot, mode, pause, resume, reset, setSpeed } = useSession();
+  if (mode === "kis-private") return <div className="control-bar">
+    <div className={`connection ${snapshot.status}`} role="status"><span className="status-dot" />{snapshot.status === "live" ? "KRX 시세 수신 중" : labels[snapshot.status]}</div>
+    <span className="virtual-clock">마지막 수신 {snapshot.eventTimeMs ? time(snapshot.eventTimeMs) : "—"} <small>KST</small></span>
+    <div className="control-buttons">
+      <button type="button" onClick={pause} disabled={snapshot.manualPaused}>수신 중단</button>
+      <button type="button" onClick={resume}>재연결</button>
+    </div>
+    {snapshot.message ? <p className="stream-message" role="status">{snapshot.message}</p> : null}
+  </div>;
   const paused = snapshot.manualPaused;
   return (
     <div className="control-bar">

@@ -1,12 +1,13 @@
 import type { OrderBook } from "@/domain/market";
-import { number } from "@/lib/formatting/market";
+import { number, time } from "@/lib/formatting/market";
 export function OrderBookView({
   book,
   lastPrice,
 }: {
-  book: OrderBook;
-  lastPrice: number;
+  book: OrderBook | null;
+  lastPrice: number | null;
 }) {
+  if (!book) return <section className="panel book-panel"><div className="panel-heading"><h2>호가</h2></div><p className="chart-loading" role="status">수신한 호가가 없습니다. 연결 상태와 장 운영 시간을 확인하세요.</p></section>;
   const max = Math.max(
     1,
     ...book.asks.map((level) => level.quantity),
@@ -16,11 +17,11 @@ export function OrderBookView({
     <section className="panel book-panel">
       <div className="panel-heading">
         <h2>호가</h2>
-        <span className="subtle">매도·매수 각 10단계</span>
+        <span className="subtle">매도·매수 최대 10단계</span>
       </div>
       <table data-testid="orderbook">
         <caption className="sr-only">
-          합성 호가. 수량 막대는 최대 잔량에 대한 비율입니다.
+          {book.source === "synthetic" ? "합성 호가" : "KRX 수신 호가"}. 수량 막대는 최대 잔량에 대한 비율입니다.
         </caption>
         <thead>
           <tr>
@@ -51,7 +52,7 @@ export function OrderBookView({
           ))}
           <tr className="spread-row">
             <td colSpan={3}>
-              현재가 <strong>{number(lastPrice)}</strong>
+              현재가 <strong>{lastPrice === null ? "—" : number(lastPrice)}</strong>
               <span>
                 스프레드 {number(book.asks[0]!.price - book.bids[0]!.price)}원
               </span>
@@ -77,7 +78,8 @@ export function OrderBookView({
         </tbody>
       </table>
       <div className="panel-foot">
-        잔량 단위: 주 · 막대: 상대 잔량 · 0은 실제 생성값
+        {book.source === "kis-private" ? `수신 ${time(book.receivedAtMs)} KST · ` : ""}
+        잔량 단위: 주 · 막대: 상대 잔량 · {book.source === "synthetic" ? "0은 실제 생성값" : "0원 호가는 제외하며, 미수신 잔량은 만들지 않습니다"}
       </div>
     </section>
   );

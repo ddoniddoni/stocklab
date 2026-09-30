@@ -195,6 +195,45 @@ REST 요청 중 WS 이벤트가 먼저 도착할 수 있다. 나중에 끝난 �
 
 프로젝트 시작값: REST 최대 초당 2회, WS upstream 1개, 등록 단위 최대 10개. 체결과 호가는 별도 등록으로 계산한다. 한도 오류 시 증가가 아니라 요청 큐/캐시/백오프로 대응한다. 요청 한도를 여러 키나 병렬 세션으로 우회하지 않는다.
 
+### 4.6 P5 구현 계약과 로컬 실행 (2026-09-30 · 실제 수신 미검증)
+
+공식 샘플 고정 commit: `277ec0eb7a9b7f63b6807829286c80f36649dad2`.
+
+- [인증/제어 프레임/heartbeat 샘플](https://github.com/koreainvestment/open-trading-api/blob/277ec0eb7a9b7f63b6807829286c80f36649dad2/examples_user/kis_auth.py): `tokenP`의 appsecret과 `Approval`의 secretkey를 구분한다. REST 만료 일시는 KST로 해석하며 토큰/접속키는 메모리에서만 보관한다. PINGPONG은 공식 예제대로 WS pong으로 응답한다.
+- [REST 샘플](https://github.com/koreainvestment/open-trading-api/blob/277ec0eb7a9b7f63b6807829286c80f36649dad2/examples_user/domestic_stock/domestic_stock_functions.py): 현재가 `FHKST01010100`, 일봉 `FHKST03010100`, 시장 J/KRX, 일봉 D·원주가 1. 최대 100건을 넘지 않게 90일 구간으로 나눈다.
+- [WS 컬럼 순서](https://github.com/koreainvestment/open-trading-api/blob/277ec0eb7a9b7f63b6807829286c80f36649dad2/examples_user/domestic_stock/domestic_stock_functions_ws.py), [체결 실행 예제](https://github.com/koreainvestment/open-trading-api/blob/277ec0eb7a9b7f63b6807829286c80f36649dad2/examples_llm/domestic_stock/ccnl_krx/chk_ccnl_krx.py), [공식 서버 주소](https://github.com/koreainvestment/open-trading-api/blob/277ec0eb7a9b7f63b6807829286c80f36649dad2/kis_devlp.yaml): 실전 REST `https://openapi.koreainvestment.com:9443`, WS `ws://ops.koreainvestment.com:21000/tryitout`. 공식 샘플의 연결 주소를 그대로 사용하며 임의 대체 호스트를 받지 않는다.
+- [현재가 응답 필드](https://github.com/koreainvestment/open-trading-api/blob/277ec0eb7a9b7f63b6807829286c80f36649dad2/examples_llm/domestic_stock/inquire_price/chk_inquire_price.py), [일봉 응답 필드](https://github.com/koreainvestment/open-trading-api/blob/277ec0eb7a9b7f63b6807829286c80f36649dad2/examples_llm/domestic_stock/inquire_daily_itemchartprice/chk_inquire_daily_itemchartprice.py)를 함께 읽었다. 출처 열람은 실제 응답 대조가 아니다.
+- [공식 유량 안내(본문 기준 2026-04-20)](https://apiportal.koreainvestment.com/community/10000000-0000-0011-0000-000000000001/post/d0d1a83f-6f8d-4437-9700-6d26702fd989)는 실전 REST 18회/초, 모의 1회/초, WS 1세션·41등록, 접근토큰/접속키 발급 각각 1회/초를 안내한다. [공지 목록](https://apiportal.koreainvestment.com/community-notice)에는 신규 고객 제한(2026-03-20)과 잠금 표시된 유량제한 적용 안내(2026-09-16)가 있어 이를 계정별 보장 한도로 간주하지 않는다. 본인 계정 조건은 미확인이다. 구현 예산은 최대 REST 2회/초·WS 1개·10등록이며 키/세션으로 우회하지 않는다.
+
+**설정과 실행**
+
+1. 본인 계정의 신청/이용 조건·최신 한도를 직접 확인한다. 키를 대화나 Git에 올리지 않는다.
+2. `tools/kis-bridge/.env.example`을 같은 폴더의 `.env.local`로 복사해 `KIS_ENV=real`, 본인 App Key/Secret을 설정한다. 실제 환경파일은 Git 제외다. 계좌번호·주문 비밀번호·HTS ID를 받지 않는다.
+3. Node 24 LTS/npm 11에서 `npm run dev:kis`로 시작한다. 이 작업 중에는 명령을 실행하지 않았다.
+4. 브리지는 `127.0.0.1:8787`, Next 개발 서버는 `127.0.0.1:3000`이다. 허용 웹 Origin은 `http://127.0.0.1:3000`, `http://localhost:3000`만이다. 포트/원격 호스트/모의 계정은 P5에서 지원하지 않는다.
+5. launcher는 매번 임시 공유 비밀을 생성한다. 한투 앱 키 파일은 bridge 자식만 읽으며 Next에는 앱 키를 전달하지 않는다. bridge 준비 IPC 이후 Next를 시작하고 한쪽 종료 시 다른 쪽도 정리한다. CLI 인자로 키/주소를 받지 않는다.
+6. 일반 `npm run dev`는 기본 합성 모드다. `dev:bridge` 단독 실행은 같은 32자 이상 공유 비밀과 고정 주소·`KIS_LOCAL_ENABLED=1`을 Next 개발 프로세스에도 설정해야 하는 고급 경로다. 공개/production 실행은 모두 거부하며 일반적으로 `dev:kis`를 사용한다.
+
+**경계와 요청 범위**
+
+- Next의 POST `/api/local/bridge-session`, GET `/api/local/quote?symbol=...`, POST `/api/local/history`만 제공한다. development/local/kis-private 조건, 정확한 Host/Origin과 same-origin Fetch Metadata를 확인한다. public/Preview/production/synthetic에서는 404다.
+- Next→bridge는 공유 비밀 헤더를 쓰며 브라우저에는 전달하지 않는다. 브리지 HTTP는 loopback·정확한 Host·서버 비밀을 확인하고 Origin이 달린 직접 브라우저 요청은 거부한다. 임의 URL/TR ID/종목을 받지 않는다.
+- 브라우저 WS는 정확한 Host/Origin 확인 후 첫 메시지에서 30초 일회용 티켓을 소비한다. 티켓은 해당 Origin에 묶이고 URL/storage에 저장하지 않는다. 5초 미인증 종료, 최대 64개 티켓·12개 로컬 소켓, 메시지/요청/버퍼 상한을 둔다. CORS wildcard를 열지 않는다.
+- 모든 탭의 종목/채널 참조를 합쳐 원천 WS 하나에 등록한다. quote와 trade는 체결 TR 한 단위, 호가는 별도 단위다. 구독 ACK를 기다리며 500ms 간격으로 변경하고 마지막 참조가 해제되면 원천도 해제한다.
+- REST 요청은 단일 큐(최대 24개), token/approval 발급은 각 single-flight다. 실패 시 원천 메시지를 노출하지 않고 60초 cooldown, 연결은 횟수 제한이 있는 지수 backoff를 사용한다. 구독 거절/파서 오류는 자동 재시도를 멈춘다.
+
+**표시와 제한**
+
+- `LocalBridgeMarketProvider`와 별도 로컬 store를 기존 UI에 연결했다. 합성 초기값을 사용하지 않고 null/미수신에서 시작한다. 브리지/브라우저에서 정규화 DTO를 각각 검증하고 100ms 단위로 UI에 알리되 모든 체결은 집계한다.
+- REST 응답에는 체결 시각이 없으므로 `timeBasis=retrieved`로 조회 시각을 표시한다. WS는 BSOP_DATE와 STCK_CNTG_HOUR를 합친다. 비교 기준가는 현재가−원천 전일 대비 계산값이며 과거 원주가 종가라고 보증하지 않는다. 공격 방향은 unknown이다.
+- WS 레코드 수×정확한 필드 수를 검사하며 같은 초/가격/수량도 서로 다른 순번이면 보존한다. 역전 이벤트는 제외하고 누락 가능성을 알린다. 새 세션마다 순번/정렬 기준을 초기화한다. REST 요청 시작 후 새 WS quote가 왔으면 그 REST 응답을 버린다.
+- 호가는 날짜가 없어 수신 시각 전후 하루 중 가장 가까운 KST 시각을 사용하되 10분 이내만 허용한다. 0원 레벨은 제외한다. 양쪽 레벨 부재·교차 호가·스키마 변경은 현재 도메인에서 표현하지 못하므로 오류로 중단한다. 동시호가·시간외/애프터마켓의 실제 응답 처리는 추가 대조가 필요하다.
+- 일봉은 최대 날짜 차이 366일, 원주가만 지원한다. 날짜별 정렬과 중복 키 병합, OHLC/문자열 거래량 검증, partial/빈 결과/오류를 표시한다. 원천 거래일 달력을 검증하지 않아 `complete`를 주장하지 않는다. 일부 구간 실패 시 이미 조회한 구간과 경고를 표시한다.
+- 중단/탭 숨김은 수신을 해제하고 재연결은 새 관측 구간에서 시작한다. 상세 화면 재진입도 체결/캔들을 비운다. 끊긴 구간을 채우지 않으며 일봉과 수신 1분 캔들을 이어 붙이지 않는다. 30초 무수신은 stale, 오래된 호가는 비운다. 장 마감은 추정하지 않는다.
+- API 키/토큰/승인키/프레임/실제 시세를 파일·로그·공개 DTO에 남기는 기능은 없다. 포트폴리오 캡처는 synthetic 모드를 사용한다. 주문/계좌/개인 체결통보는 구현하지 않는다.
+
+**미실행:** `dev:kis`, `dev:bridge`, 실제 키 확인/인증/시세 수신, 토큰/티켓/Origin·재연결·Strict Mode·다중 탭·일봉 대조·공개 빌드/Network 검사. 계약 및 기존 모드 테스트 갱신/실행은 사용자 요청 후 진행한다.
+
 ## 5. OpenDART 연동
 
 ### 5.1 필요한 API

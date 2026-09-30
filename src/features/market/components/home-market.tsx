@@ -6,18 +6,20 @@ import { parseWatchSymbols, watchHref } from "@/domain/market-view";
 import { direction, number } from "@/lib/formatting/market";
 import { usePersonal, usePersonalStore } from "@/features/personal/personal-context";
 import { StorageStatus, WatchButton } from "@/features/personal/personal-controls";
-import { useQuote } from "../market-context";
+import { useQuote, useQuoteStatus, useMarketMode } from "../market-context";
 function QuoteRow({
   stock,
 }: {
   stock: Instrument;
 }) {
   const quote = useQuote(stock.symbol);
+  const status = useQuoteStatus(stock.symbol);
+  const local = useMarketMode() === "kis-private";
   return (
     <tr
       data-testid={`home-quote-${stock.symbol}`}
-      data-time={quote.eventTimeMs}
-      data-session={quote.sessionId}
+      data-time={quote?.eventTimeMs}
+      data-session={quote?.sessionId}
     >
       <th scope="row">
         <Link href={`/stocks/${stock.symbol}`} className="stock-name">
@@ -28,17 +30,17 @@ function QuoteRow({
         </Link>
       </th>
       <td className="numeric">
-        {number(quote.lastPrice)}
+        {quote ? number(quote.lastPrice) : "—"}
         <small className="unit">원</small>
+        {local && status !== "live" ? <small className="subtle"> · {quote ? "최신 수신 미확인" : "미수신"}</small> : null}
       </td>
-      <td className={`numeric ${direction(quote.change ?? 0)}`}>
-        {(quote.changePercent ?? 0) >= 0 ? "+" : ""}
-        {(quote.changePercent ?? 0).toFixed(2)}
+      <td className={`numeric ${direction(quote?.change ?? 0)}`}>
+        {quote?.changePercent != null ? `${quote.changePercent >= 0 ? "+" : ""}${quote.changePercent.toFixed(2)}` : "—"}
         <span className="sr-only"> 퍼센트</span>
         <span aria-hidden="true">%</span>
       </td>
       <td className="numeric volume-col">
-        {number(quote.cumulativeVolume ?? "0")}
+        {quote?.cumulativeVolume != null ? number(quote.cumulativeVolume) : "—"}
         <small className="unit">주</small>
       </td>
       <td>
@@ -48,6 +50,7 @@ function QuoteRow({
   );
 }
 export function HomeMarket() {
+  const local = useMarketMode() === "kis-private";
   const query = useSearchParams();
   const router = useRouter();
   const snapshot = usePersonal();
@@ -62,7 +65,7 @@ export function HomeMarket() {
     <section className="panel home-table">
       <div className="panel-heading">
         <h2>{watchOnly ? legacy ? "URL의 선택 종목" : "관심종목" : "지원 종목"}</h2>
-        <span className="subtle">{stocks.length}종목 · 합성 시세</span>
+        <span className="subtle">{stocks.length}종목 · {local ? "KRX 로컬 시세" : "합성 시세"}</span>
       </div>
       <nav className="view-nav" aria-label="종목 목록 보기">
         <Link
@@ -86,15 +89,15 @@ export function HomeMarket() {
       {stocks.length ? (
         <table>
           <caption className="sr-only">
-            지원 종목의 합성 현재가와 합성 등락
+            지원 종목의 {local ? "KRX 현재가와 전일 대비 등락" : "합성 현재가와 합성 등락"}
           </caption>
           <thead>
             <tr>
               <th scope="col">종목</th>
-              <th scope="col">합성 현재가</th>
-              <th scope="col">합성 등락률</th>
+              <th scope="col">{local ? "KRX 현재가" : "합성 현재가"}</th>
+              <th scope="col">{local ? "전일 등락률" : "합성 등락률"}</th>
               <th scope="col" className="volume-col">
-                합성 거래량
+                {local ? "누적 거래량" : "합성 거래량"}
               </th>
               <th scope="col">
                 <span className="sr-only">관심종목</span>
@@ -118,7 +121,7 @@ export function HomeMarket() {
         </div>
       ) : null}
       <div className="panel-foot">
-        SIM 시장 · 별표는 이 브라우저의 관심종목에 저장됩니다. 시세는 직접 생성합니다.
+        {local ? "KRX 시장 · 개인 로컬 시세" : "SIM 시장 · 직접 생성한 시세"} · 별표는 이 브라우저의 관심종목에 저장됩니다.
       </div>
     </section>
   );

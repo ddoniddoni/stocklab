@@ -5,6 +5,7 @@ import {
   type PlaybackSpeed,
 } from "../providers/synthetic-market-provider";
 export class MarketStore {
+  readonly mode = "synthetic" as const;
   private provider: SyntheticMarketProvider | undefined;
   private readonly initial: SyntheticMarketProvider;
   private readonly snapshots = new Map<string, MarketSnapshot>();

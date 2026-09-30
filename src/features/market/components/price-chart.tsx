@@ -28,9 +28,11 @@ const asVolume = (candle: Candle) => ({
 export default function PriceChart({
   candles,
   sessionId,
+  local = false,
 }: {
   candles: readonly Candle[];
   sessionId: string;
+  local?: boolean;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const api = useRef<{
@@ -77,7 +79,7 @@ export default function PriceChart({
       borderVisible: false,
       wickUpColor: "#ff8495",
       wickDownColor: "#78a9ff",
-      priceFormat: { type: "price", precision: 0, minMove: 100 },
+      priceFormat: { type: "price", precision: 0, minMove: local ? 1 : 100 },
     });
     price
       .priceScale()
@@ -94,7 +96,7 @@ export default function PriceChart({
       api.current = null;
       chart.remove();
     };
-  }, []);
+  }, [local]);
   useEffect(() => {
     const current = api.current;
     if (!current || !candles.length) return;
@@ -122,7 +124,7 @@ export default function PriceChart({
       ref={container}
       className="price-chart"
       role="img"
-      aria-label="합성 1분 캔들 및 거래량 차트. 현재 캔들 수치는 아래 표에 제공됩니다."
+      aria-label={`${local ? "KRX 수신 구간의" : "합성"} 1분 캔들 및 거래량 차트. 현재 캔들 수치는 아래 표에 제공됩니다.`}
     />
   );
 }

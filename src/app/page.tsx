@@ -4,7 +4,9 @@ import { HomeMarket } from "@/features/market/components/home-market";
 import { MarketControls } from "@/features/market/components/market-controls";
 import { SourceNotice } from "@/features/market/components/source-notice";
 import { RecentNotes } from "@/features/personal/personal-controls";
+import { getPublicConfig } from "@/server/config";
 export default function Home() {
+  const local = getPublicConfig().marketMode === "kis-private";
   return (
     <>
       <SourceNotice />
@@ -15,7 +17,7 @@ export default function Home() {
           <p className="intro">종목을 찾아, 가격의 흐름을 살펴보세요.</p>
         </div>
         <span className="scope-label">
-          공유 시세 실험<span>다섯 종목, 하나의 시계</span>
+          {local ? "개인 로컬 시세" : "공유 시세 실험"}<span>{local ? "다섯 종목, KRX 수신" : "다섯 종목, 하나의 시계"}</span>
         </span>
       </div>
       <StockSearch />
@@ -39,7 +41,7 @@ export default function Home() {
           <p>
             현재가에서 캔들, 호가, 체결까지.
             <br />
-            하나의 합성 세션을 상세 화면에서 함께 확인하세요.
+            {local ? "실제 수신한 구간을 상세 화면에서 함께 확인하세요." : "하나의 합성 세션을 상세 화면에서 함께 확인하세요."}
           </p>
         </div>
         <ol>
@@ -50,7 +52,7 @@ export default function Home() {
             <span>살펴보기</span>가격과 거래량의 변화 확인
           </li>
           <li>
-            <span>멈춰보기</span>일시정지로 같은 순간 비교
+            <span>{local ? "기록하기" : "멈춰보기"}</span>{local ? "출처를 확인하고 리서치 노트 작성" : "일시정지로 같은 순간 비교"}
           </li>
         </ol>
       </section>

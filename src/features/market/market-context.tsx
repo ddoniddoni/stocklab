@@ -9,7 +9,10 @@ import {
 import { parsePublicConfig, type PublicConfig } from "@/lib/config";
 import { instrument } from "@/domain/instruments";
 import { MarketStore } from "./stores/market-store";
-const MarketContext = createContext<MarketStore | null>(null);
+import { LocalMarketStore } from "./stores/local-market-store";
+import type { MarketViewSnapshot } from "@/domain/local-market";
+import type { Quote, HistoryQuery } from "@/domain/market";
+const MarketContext = createContext<MarketStore | LocalMarketStore | null>(null);
 export function MarketSession({
   config,
   children,
@@ -18,7 +21,10 @@ export function MarketSession({
   children: React.ReactNode;
 }) {
   const [store] = useState(
-    () => new MarketStore(parsePublicConfig(config).seed),
+    () => {
+      const parsed = parsePublicConfig(config, process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_MARKET_MODE === "kis-private");
+      return parsed.marketMode === "kis-private" ? new LocalMarketStore() : new MarketStore(parsed.seed);
+    },
   );
   useEffect(() => {
     store.start(document.visibilityState === "hidden");
@@ -41,7 +47,7 @@ export function useMarket(symbol = instrument.symbol) {
   const store = useStore();
   const view = store.views.get(symbol);
   if (!view) throw new Error("지원하지 않는 종목입니다.");
-  const snapshot = useSyncExternalStore(
+  const snapshot = useSyncExternalStore<MarketViewSnapshot>(
     view.subscribeDetail,
     view.getSnapshot,
     view.getServerSnapshot,
@@ -57,7 +63,7 @@ export function useQuote(symbol: string) {
   const store = useStore();
   const view = store.views.get(symbol);
   if (!view) throw new Error("지원하지 않는 종목입니다.");
-  return useSyncExternalStore(
+  return useSyncExternalStore<Quote | null>(
     view.subscribe,
     view.getQuote,
     view.getServerQuote,
@@ -72,9 +78,23 @@ export function useSession() {
   );
   return {
     snapshot,
+    mode: store.mode,
     pause: store.pause,
     resume: store.resume,
     reset: store.reset,
     setSpeed: store.setSpeed,
+  };
+}
+export function useMarketMode() { return useStore().mode; }
+export function useQuoteStatus(symbol: string) {
+  const view = useStore().views.get(symbol);
+  if (!view) throw new Error("지원하지 않는 종목입니다.");
+  return useSyncExternalStore(view.subscribe, () => view.getSnapshot().status, () => view.getServerSnapshot().status);
+}
+export function useLocalHistory() {
+  const store = useStore();
+  return (query: HistoryQuery, signal?: AbortSignal) => {
+    if (store.mode !== "kis-private") throw new Error("개인 시세 모드에서만 일봉을 조회합니다.");
+    return store.getHistory(query, signal);
   };
 }

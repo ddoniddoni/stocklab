@@ -39,6 +39,7 @@ async function main() {
   // Match Next production env-file precedence without logging environment contents.
   loadEnvConfig(process.cwd(), false, { info() {}, error() {} });
   const config = validateEnvironment(process.env);
+  if (config.marketMode !== "synthetic") throw new Error("public market mode");
   if (config.financialMode === "dart-cache") publicCacheConnection(process.env);
   const manifest = await readSourceManifest();
   const source = config.financialMode === "fixture" ? "fixture" : "opendart";

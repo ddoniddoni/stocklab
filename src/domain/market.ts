@@ -32,6 +32,7 @@ export const quoteSchema = meta
     change: z.number().finite().nullable(),
     changePercent: z.number().finite().nullable(),
     cumulativeVolume: z.string().regex(/^\d+$/).nullable(),
+    timeBasis: z.enum(["trade", "retrieved"]).optional(),
   })
   .refine(validSource, "source/venue mismatch");
 const level = z.object({ price, quantity });
