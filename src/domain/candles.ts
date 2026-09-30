@@ -1,4 +1,4 @@
-import { tradeSchema, type Candle, type Trade } from "./market";
+import { tradeSchema, type Candle, type Trade } from "./market.ts";
 export const CANDLE_LIMIT = 240;
 export function aggregateTrade(
   candles: readonly Candle[],

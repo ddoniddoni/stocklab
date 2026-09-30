@@ -7,7 +7,7 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   outputFileTracingIncludes: { "/*": ["./data/published/*.json"] },
-  outputFileTracingExcludes: { "/*": ["./data/raw/**/*", "./data/private/**/*", "./tools/dart/**/*", "./tools/kis-bridge/**/*", "./.env*", "./supabase/**/*"] },
+  outputFileTracingExcludes: { "/*": ["./data/raw/**/*", "./data/private/**/*", "./tools/dart/**/*", "./tools/kis-bridge/**/*", "./tools/perf/**/*", "./test-results/**/*", "./.env*", "./supabase/**/*"] },
   async headers() {
     return [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "X-Content-Type-Options", value: "nosniff" }] }];
   },

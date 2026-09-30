@@ -20,6 +20,7 @@
     "lint": "eslint . --max-warnings=0",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
+    "test:perf": "node tools/perf/run.ts",
     "data:sync": "node tools/dart/sync.ts",
     "data:review": "node tools/dart/review.ts",
     "data:publish": "node tools/dart/publish.ts",
