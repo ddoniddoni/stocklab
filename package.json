@@ -10,15 +10,21 @@
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
+    "prebuild": "npm run check:public",
+    "postbuild": "npm run check:public -- --artifacts",
+    "prestart": "npm run check:public -- --artifacts",
     "start": "next start --hostname 127.0.0.1",
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "data:sync": "node tools/dart/sync.ts",
-    "data:review": "node tools/dart/review.ts"
+    "data:review": "node tools/dart/review.ts",
+    "data:publish": "node tools/dart/publish.ts",
+    "check:public": "node tools/public/check.ts"
   },
   "dependencies": {
+    "@next/env": "16.3.7",
     "lightweight-charts": "5.2.1",
     "next": "16.3.7",
     "react": "19.3.0",

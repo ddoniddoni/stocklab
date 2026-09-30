@@ -2,7 +2,7 @@ import { barPercent, compactWon } from "@/domain/financials/amounts";
 import { metricLabels, type FinancialColumn, type MetricKey } from "@/domain/financials/model";
 
 const chartMetrics = ["revenue", "operatingProfit", "netProfit"] as const satisfies readonly MetricKey[];
-export function FinancialChart({ columns }: { columns: FinancialColumn[] }) {
+export function FinancialChart({ columns, source = "fixture" }: { columns: FinancialColumn[]; source?: "fixture" | "opendart" }) {
   const values = columns.flatMap((column) => column.metrics.filter((item) => chartMetrics.some((metric) => metric === item.metric)))
     .flatMap((item) => item.value === null ? [] : [BigInt(item.value)]);
   const maximum = values.reduce((max, value) => {
@@ -11,7 +11,7 @@ export function FinancialChart({ columns }: { columns: FinancialColumn[] }) {
   }, 0n);
   return (
     <section className="panel financial-chart-panel" aria-labelledby="financial-chart-title">
-      <div className="panel-heading"><h2 id="financial-chart-title">기간별 손익 흐름</h2><span className="subtle">예시 · 공통 금액 축</span></div>
+      <div className="panel-heading"><h2 id="financial-chart-title">기간별 손익 흐름</h2><span className="subtle">{source === "fixture" ? "예시" : "공시 캐시"} · 공통 금액 축</span></div>
       <p className="financial-chart-note">가운데 선은 0원입니다. 왼쪽은 음수, 오른쪽은 양수이며 정확한 값은 아래 표에서도 확인할 수 있습니다.</p>
       <div className="financial-chart-legend" aria-hidden="true">
         {chartMetrics.map((metric) => <span key={metric}><i className={`financial-series-${metric}`} />{metricLabels[metric]}</span>)}

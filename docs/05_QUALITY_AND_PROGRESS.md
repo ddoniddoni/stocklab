@@ -234,15 +234,16 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 | 항목 | 상태 |
 |---|---|
 | 개발 문서 | 작성됨 |
-| Next.js 앱 | P0/P1 검증 기록 보존. P2 예시 재무·수집 도구와 P3 관심종목/비교/노트 코드 추가, 실행 미검증 |
+| Next.js 앱 | P0/P1 검증 기록 보존. P2 재무·수집/P3 개인 리서치/P4 공개 캐시·조회 API·안전장치 코드, 실행 미검증 |
 | 패키지 버전/Node 버전 선정 | Node 24.21.0 LTS / npm 11.17.0, 아래 작업 기록 참조 |
 | 합성 시세 Provider | 5종목, 공유 시계/배속/숨김 정지/전체 초기화/URL 복원 |
 | 실제 한투 키 발급/인증/수신 | 미실행 |
 | DART 키/실제 수집/원문 대조 | P2-B 로컬 수집/검토 도구 코드 작성. 키 준비 상태 미확인, 실제 수집·원문 대조 미실행 |
-| Supabase 생성/migration/RLS | 미실행 |
-| 테스트/lint/typecheck/build | P1-B 당시 unit 44개/E2E 10개 및 기본 검사 통과. P2-A/P2-B/P3는 사용자 지시로 전부 미실행 |
+| Supabase 생성/migration/RLS | P4 migration SQL 파일 작성. 프로젝트 생성·로컬/원격 적용·RLS 실행 검증 미실행 |
+| 공개 재무 자료 | manifest는 fixture/빈 목록. 실제 공개 DTO 생성·등록·DB 적재 0건 |
+| 테스트/lint/typecheck/build | P1-B 당시 unit 44개/E2E 10개 및 기본 검사 통과. P2-A/P2-B/P3/P4는 사용자 지시로 전부 미실행 |
 | Vercel 배포 | 미실행 |
-| Git Flow | P0/P1-A/P1-B/P2-A/P2-B 및 P3 코드는 develop에 통합. P2-A/P2-B/P3는 실행 미검증 유지. main 릴리스 미실행 |
+| Git Flow | P0/P1-A/P1-B/P2-A/P2-B/P3/P4 코드는 develop에 통합. P2-A/P2-B/P3/P4는 실행 미검증 유지. main 릴리스 미실행 |
 
 ### 7.2 단계 기록
 
@@ -256,7 +257,7 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 | P2-A | implemented_unverified | 코드 작성 및 원천 의미의 공식 가이드 참고 | F04/F05/F06을 포함한 자동화 작성/실행, 기본 검사와 UI 확인은 사용자 요청 대기 |
 | P2-B | implemented_unverified | data:sync/data:review, 원천 해시와 체크포인트, 검토된 로컬 DTO 코드 | CLI/의존성 검증, 키 설정·회사 한 곳의 실제 수집/계정 선택/원문 대조. 키 없음이 확인되면 실제 수집 blocked 기록 |
 | P3 | implemented_unverified | IndexedDB 관심종목/노트, fixture 기업 비교, 충돌·백업·초안 처리 코드 | U01~U10/F16, 기본 검사/UI/다중 탭/저장소 장애 검증과 기존 URL 선택 E2E 갱신 |
-| P4 | not_started | 없음 | 공개 캐시와 모드 차단 |
+| P4 | implemented_unverified | 검토 DTO/JSON·Supabase 조회/GET API/SQL·공개 설정과 빌드 검사 코드 | 실제 공개 자료, DB 적용/RLS, API miss·입력 제한, 빌드/trace/Network 검증 |
 | P5 | not_started | 없음 | 실제 한투 로컬 연동 |
 | P6 | not_started | 없음 | 측정/접근성/릴리스 |
 | P7 | not_started | 선택 | 클라우드 개인 동기화 |
@@ -288,6 +289,11 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 | ADR-21 | 노트 초안은 루트 세션에 보존하고 저장 완료 전 탭 종료 안내 | 라우트 이동 뒤 오류·충돌이 발생해도 텍스트 내보내기/사본 저장 가능. 강제 종료 무손실을 보증하지 않음 |
 | ADR-22 | 이전 symbols URL은 임시 목록, 비교는 서버 fixture 조회 | URL로 개인 목록을 몰래 덮어쓰지 않음. 실제 수집 없이 실제 비교 결과로 표시하지 않음 |
 | ADR-23 | P3 폼/저장은 native API와 기존 Zod로 구현 | 작은 텍스트 폼과 명시적 transaction 범위, 추가 의존성 없이 기존 React/UI 구조에 통합 |
+| ADR-24 | 공개 재무는 manifest의 고정 ID/canonical SHA-256을 JSON·Supabase에서 동일하게 확인 | 원천·검토 기록과 공개 DTO 구분, 미등록/바뀐 payload 거부, 정정 revision 보존 |
+| ADR-25 | Supabase는 publishable 키로만 읽고 실패 시 다른 자료로 대체하지 않음 | 웹에서 운영 키/RLS 우회/비공개 원본 접근 차단, 명확한 오류 상태 |
+| ADR-26 | 실제 Q4 손익·분기 CF 파생을 P4에서 보류하고 원천 누적을 표시 | P2 실제 표본/검증이 남아 있어 예시 계산기의 실제 데이터 재사용을 피함 |
+| ADR-27 | 공개 API/remote fetch는 no-store, 공시는 한 페이지 5개 묶음·최대 20개 | 철회 후 오래된 성공 응답 재사용 방지와 요청 크기/범위 제한 |
+| ADR-28 | Next 배포 추적에서 private/원천/운영 도구 제외, npm build/start에 공개 검사 연결 | source manifest와 설정·산출물 경계를 코드화. 실제 보안 검증과 배포 승인을 대신하지 않음 |
 
 ### 7.4 검증이 필요한 외부 항목
 
@@ -301,6 +307,39 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 위 항목이 미확인이라고 전체 개발을 멈추지는 않는다. 키 없는 합성 UI, parser 테스트, 공개 차단 로직을 먼저 만들고 해당 연동만 미검증 상태로 남긴다.
 
 ## 8. 작업 종료 기록
+
+### 2026-09-30 · P4 공개 재무 캐시·조회 API·배포 경계 (실행 미검증)
+
+**범위와 Git Flow**
+
+- `develop` / `2ca54f3`의 깨끗한 상태를 읽고 origin fetch 후 차이 0을 확인했다. 편집 전에 `feature/p4-public-financial-cache`를 생성했다. 상시 지시에 따라 관련 파일 커밋·feature 푸시·develop 병합/푸시까지 진행한다.
+- 기능 커밋 `ac8770f`를 `origin/feature/p4-public-financial-cache`에 푸시했다. 다시 fetch하여 develop 차이 0을 확인한 뒤 `--no-ff`로 충돌 없이 병합했다. 이 통합 커밋에는 README와 현재 Git 상태 기록을 포함하며 실행 미검증 상태를 유지한다.
+- P2/P3 검증과 실제 DART 수집이 남아 있지만 외부 키 없는 다음 기능 개발 지시에 따라 P4 조회 경계를 작성했다. 이전 단계를 done으로 올리지 않고 P4도 implemented_unverified로 남긴다. 실제 데이터·키·계정·배포·main 릴리스는 범위에 넣지 않았다.
+
+**작성한 내용**
+
+- `domain/financials/published.ts`: 회사/기간/원문 URL/금액/검토 날짜를 확인하는 strict 공개 계약, 1MiB/보고서 4개/metric 9개 제한, manifest의 500개 이하 등록 목록. 현재 `data/published/manifest.json`은 합성 생성기 1.1.0/fixture/빈 목록이다.
+- `tools/dart/verified-run.ts`로 기존 원천 재구성 검사를 공유하고 `data:publish`를 추가했다. `--confirm-public`과 로컬 검토 기록으로 공개 DTO/manifest 파일을 준비하며 reviewer·운영 경로·원본 응답은 제외한다. 이전 revision을 보존하고 manifest를 마지막에 교체한다. 실제 명령은 실행하지 않았다.
+- JSON 파일 경계와 Supabase REST 읽기 전용 repository: 등록된 ID/해시만 읽고 5초 timeout/크기를 제한한다. Supabase 미설정일 때만 JSON, 원격 실패 시에는 오류다. DART 수집·원본 fallback·개인 쿠키/운영 키 사용은 없다. 실제 DB 조회는 하지 않았다.
+- runtime-config/종목검색/회사/보고서/공시 GET API를 작성했다. 지원 법인 목록, 필수 보고서 필터, 연도·검색어·query 중복·페이지 범위, 일반 오류 메시지/requestId, no-store/noindex를 적용했다. 원천 API 재수집/refresh POST 경로는 만들지 않았다.
+- 재무·공시·기업 비교에서 repository 선택과 EXAMPLE/DART CACHE 구분, 수집/검토/공개 준비일·공식 원문 링크·30일 stale·미설정/미제공/오류를 연결했다. 실제 Q4 손익·분기 CF는 미제공과 보고 누적 참고값을 표시하며 예시 파생기로 계산하지 않는다.
+- Supabase CLI 2.118.0의 help/new 명령으로 `20260930102900_public_financial_cache.sql`을 생성·작성했다. 원천 테이블 6개는 stocklab_private, 공개 DTO 테이블은 public에 배치하고 RLS/revoke/SELECT grant를 명시했다. DB 서버/마이그레이션 적용/쿼리/정책 검사는 실행하지 않았다.
+- 공개 환경의 KIS/DART/privileged Supabase 변수 및 브라우저 비밀값 차단을 확장했다. Next trace 포함/제외, 전 페이지 noindex, `check:public`과 npm build 전후/start 전 연결을 추가했다. 환경·manifest·파일·출력 검사 도구 자체도 미실행이다.
+- checker의 환경파일 로딩을 위해 이미 잠긴 @next/env 16.3.7을 직접 dependency로 명시하고 lockfile 루트 계약을 맞췄다. 다른 패키지 버전/lock 항목은 바꾸지 않았다. README·데이터 설명·문서 01~04와 환경 예제를 갱신했다.
+
+**읽은 근거와 실행하지 않은 항목**
+
+- Supabase/Postgres/React 스킬을 적용했다. ego-browser에서 Supabase changelog, grant/RLS, publishable 키 헤더와 REST 경로, Next file tracing 공식 문서를 읽고 참고 공간을 닫았다. 문서 확인일 2026-09-30이며 출처는 문서 03 §5.5에 기록했다.
+- CLI가 설치되어 있지 않아 임시 npm 캐시에 Supabase 2.118.0만 받아 help와 migration new를 사용했다. 이는 SQL 파일 생성이며 애플리케이션 실행 검증이나 DB 변경이 아니다. 프로젝트 npm install/ci는 실행하지 않았다.
+- **사용자 지시로 테스트 작성·실행, lint/typecheck/build, React Doctor, check:public, DART CLI/dry-run/공개 준비 명령, 개발 서버·앱 브라우저 검증을 전부 미실행했다.** 관련 스킬의 검증 권고보다 사용자 지시를 우선했다. 소스/diff 읽기와 Git 상태 확인만으로 기능 통과를 주장하지 않는다.
+- 실제 DART/KIS API, Supabase 계정/프로젝트 생성·접속·원격 migration/적재, 개인 브라우저 데이터 변경, 배포/PR/main 릴리스는 하지 않았다.
+
+**남은 위험과 다음 작업**
+
+- 타입/빌드/라우트 응답, DTO 거부·cache miss의 외부 요청 부재, 설정 우회, 캐시 철회, SQL 문법·RLS 익명 쓰기 차단, 파일 trace/산출물 검사와 화면 접근성은 실행 미검증이다. 실제 DTO가 0개라 실제 데이터의 end-to-end 조회/표시도 미검증이다.
+- manifest/hash는 데이터 생성 경로와 재이용 권한에 대한 독립적인 증명이 아니다. 수동 원문·공개 적합성 검토가 필요하며 바이트 패턴 검사는 모든 변형된 녹화/비밀정보를 탐지하지 못할 수 있다. 배포된 JSON/다운로드는 DB 비공개만으로 회수되지 않는다.
+- 검증 요청 시 기본 검사와 기존 테스트의 모드/문구 계약 갱신, P2~P4 회귀·RLS/API/공개 빌드 검증을 진행한다. 기본 검사 미실행은 Git 절차를 보류할 이유로 삼지 않는다.
+- **다음 기능:** P5 개인 로컬 한투 중계·읽기 전용 연동 경계. 실제 인증/수신은 키·허용 환경·사용자 요청 범위가 확보됐을 때만 별도 수행하고 미검증을 명시한다.
 
 ### 2026-09-30 · P3 관심종목·기업 비교·리서치 노트 (실행 미검증)
 

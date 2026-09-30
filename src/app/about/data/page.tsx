@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getPublicConfig } from "@/server/config";
 export const metadata = { title: "데이터 설명" };
 export default function DataPage() {
-  const { seed } = getPublicConfig();
+  const { seed, financialMode } = getPublicConfig();
   return (
     <article className="data-page">
       <Link href="/" className="back-link">
@@ -51,7 +51,7 @@ export default function DataPage() {
           스케줄링이 지연돼도 누적 이벤트를 몰아서 재생하지 않습니다.
         </p>
       </section>
-      <section>
+      {financialMode === "fixture" ? <section>
         <h2>직접 작성한 예시 재무정보와 공시</h2>
         <p>
           재무·공시 탭의 금액, 보고서와 제출일은 화면 동작을 설명하기 위해 직접
@@ -78,7 +78,7 @@ export default function DataPage() {
         </p>
         <p>
           실제 OpenDART 수집과 원문 대조는 아직 하지 않았습니다. 한국투자증권 연결과
-          클라우드 저장도 미구현이며 외부 키 없이 예시를 볼 수 있습니다.
+          개인 기록의 클라우드 동기화도 미구현이며 외부 키 없이 예시를 볼 수 있습니다.
           합성 시세와 재무 예시를 결합한 PER·PBR·시가총액·투자수익률은 제공하지 않습니다.
         </p>
         <p>
@@ -88,7 +88,18 @@ export default function DataPage() {
           </a>{" "}
           를 2026-09-30에 참고했습니다. 가이드 참고가 실제 데이터 연동 완료를 뜻하지는 않습니다.
         </p>
-      </section>
+      </section> : <section>
+        <h2>검토된 OpenDART 공시 캐시</h2>
+        <p>원문과 대조한 회사·보고서·금액만 공개 목록에 등록해 조회합니다. 수집일·검토일·공개 준비일을 구분하며,
+          수집 후 30일이 지난 자료는 오래된 캐시로 표시합니다. 실시간 조회나 최신 공시 전체를 보증하지 않습니다.</p>
+        <p>등록된 자료가 없거나 저장소에 접근하지 못하면 미설정·미제공·오류 상태를 표시합니다.
+          예시 숫자로 대체하지 않으며 페이지 방문이나 다시 불러오기로 DART 수집을 시작하지 않습니다.</p>
+        <p>현재 공개 계약은 12월 결산·KRW·검토된 연결/별도 보고서입니다. 실제 Q4 손익과 분기 현금흐름의 파생은 미제공이며,
+          보고된 누적 금액·연간 금액·기말 잔액과 원문 근거를 확인할 수 있습니다.</p>
+        <p>캐시는 Supabase의 공개 자료 또는 검토된 JSON에서 읽습니다. 설정된 Supabase 조회가 실패하면 오류를 알립니다.
+          합성 시세와 실제 재무를 결합한 PER·PBR·수익률은 제공하지 않습니다.</p>
+        <p><a href="https://opendart.fss.or.kr/" target="_blank" rel="noreferrer">OpenDART 공식 사이트 (새 창) ↗</a></p>
+      </section>}
       <section>
         <h2>관심종목과 개인 리서치 기록</h2>
         <p>관심종목의 순서와 노트는 이 브라우저에만 저장됩니다. 서버나 다른 기기에 전송하지 않으며,
@@ -97,7 +108,7 @@ export default function DataPage() {
           별도로 표시합니다. 아직 저장하지 못한 초안은 텍스트로 내보낼 수 있습니다.</p>
         <p><Link href="/notes">리서치 노트</Link>와 <Link href="/watchlist">관심종목</Link> 화면에서
           저장된 기록을 JSON으로 내보내거나 가져올 수 있습니다. 가져온 노트는 사본으로 추가되며 기존 기록을 덮어쓰지 않습니다.</p>
-        <p><Link href="/compare">기업 비교</Link>도 직접 작성한 예시 재무만 사용합니다. 회사의 실제 실적이나 투자 우열을 나타내지 않습니다.</p>
+        <p><Link href="/compare">기업 비교</Link>는 선택한 재무 모드의 같은 출처·기간·기준 자료를 사용합니다. 투자 우열을 나타내지 않습니다.</p>
       </section>
       <section>
         <h2>차트 라이브러리</h2>

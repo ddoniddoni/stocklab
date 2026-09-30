@@ -8,7 +8,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "StockLab · 합성 시세 리서치", template: "%s | StockLab" },
   description:
-    "합성 시세와 직접 작성한 예시 재무정보를 탐색하는 리서치 데모. 실제 주가와 기업 실적이 아닙니다.",
+    "합성 시세와 출처를 구분한 재무정보를 탐색하는 리서치 데모. 시세는 실제 주가가 아닙니다.",
   robots: { index: false, follow: false },
 };
 export default function RootLayout({

@@ -273,6 +273,18 @@ Supabase publishable 키는 secret 키와 다르다. secret/service-role 키는 
 
 `NODE_ENV === production`만으로 환경을 구분하지 않는다. 로컬 production build와 Vercel Preview의 의미가 다르다. 브라우저 값만 검사하지 말고 빌드와 서버에서도 검사한다.
 
+### P4 공개 조회 경계 (코드 작성 · 실행 미검증)
+
+- `financial-repository.ts`가 설정에 따라 fixture 또는 published repository를 선택한다. fixture에는 실제 회사 고유번호/원문을 만들지 않고, dart-cache의 미설정·miss·실패를 fixture로 대체하지 않는다.
+- `data/published/manifest.json`은 서버의 허용 목록이다. 회사·연도·기준·revision에 대응하는 ID와 canonical JSON SHA-256을 고정하고, 이전 revision은 보존한다. JSON과 Supabase 응답은 같은 strict 계약/해시 확인을 통과해야 한다. 실제로 등록된 자료는 아직 없다.
+- Supabase URL/publishable 키 둘 다 미설정이면 고정 디렉터리의 JSON을 읽는다. 설정돼 있으면 hosted Supabase의 `published_datasets`만 읽으며 secret/service-role 키, 사용자 입력 origin, 외부 재수집·원본 fallback을 사용하지 않는다. 요청 timeout 5초, DTO 1MiB, 한 조회의 결과 1개로 제한한다.
+- React `cache`는 RSC 요청 안의 manifest/동일 ID 읽기를 공유한다. 장기 서버 메모리 캐시·공유 CDN 재무 캐시는 사용하지 않는다. API와 원격 fetch는 no-store이며 개인 기록과 쿠키를 포함하지 않는다. 철회 후 이전 성공 응답을 장기간 재사용하지 않기 위한 선택이다.
+- 실제 재무를 기존 표시 DTO로 변환하되, Q4 손익과 중간 현금흐름을 분기 값으로 파생하지 않는다. 미검증 계산은 null/사유/보고된 누적 참고값으로 표시한다. 예시 계산기는 실제 데이터 처리에 재사용하지 않는다.
+- SQL은 원천/수집용 6개 테이블을 `stocklab_private`에, 공개 DTO만 `public.published_datasets`에 둔다. 익명/로그인 역할은 published 행 SELECT만 가능하도록 grant와 RLS를 함께 작성했다. 개인 동기화 테이블·Auth·원격 적재는 범위 밖이다.
+- 공개 모드에서 한투/DART/privileged Supabase 변수 차단을 확장했다. Next file tracing에는 공개 JSON만 포함하고 원천/비공개 파일/운영 도구/env를 제외한다. 전체 페이지 noindex/no-follow metadata/header를 적용했다.
+- `check:public`은 build 전 manifest·파일·설정을, build 후/start 전 산출물·trace를 검사하도록 연결했다. 코드 검사 도구 자체도 미실행이다. 바이트 패턴/해시/파일 검사만으로 모든 시세 녹화·유출·재이용 권한을 증명할 수 없으므로 Network 관찰과 사람이 하는 원천 검토는 별도 완료 조건이다.
+- `@next/env` 16.3.7을 직접 의존성으로 명시했다. 이미 Next 의존성으로 lockfile에 있던 동일 버전이며 checker가 Next의 production env-file 우선순위를 사용한다. npm 설치/빌드로 검증하지 않았다.
+
 ## 10. 로컬 중계 보안
 
 - listen 주소는 127.0.0.1만 허용한다. 0.0.0.0, 공개 터널, 배포는 금지한다.
