@@ -14,7 +14,7 @@
 | 검증 | Zod | 환경변수, 외부 응답, 저장 데이터 |
 | 폼 | React Hook Form | 노트 입력과 검증 |
 | 가격 차트 | TradingView Lightweight Charts | 캔들, 거래량, 점진 업데이트 |
-| 재무 차트 | Recharts | 매출/이익 비교와 툴팁 |
+| 재무 차트 | P2-A: HTML/CSS 막대와 수치 표; 상호작용 확장 시 Recharts 검토 | 기간별 손익과 원 단위 근거 |
 | 로컬 저장 | IndexedDB, 필요 시 idb | 관심종목, 노트, 버전 |
 | 클라우드 | Supabase Postgres/Auth | DART 공개 캐시, 후속 개인 동기화 |
 | 로컬 중계 | Node.js, TypeScript, ws | 한투 비밀정보와 WebSocket 관리 |
@@ -321,3 +321,12 @@ Preview도 공개 가능 환경으로 취급한다. 운영 데이터와 별도 �
 - 수동 정지와 visibility 정지를 별도로 보관한다. 숨김 중 timer를 제거하고 복귀하면 backlog 없이 이어진다. reset은 모든 종목을 교체하고 정지/배속을 유지한다.
 - 차트는 배속 묶음이 분 경계를 넘으면 이전 분 마감값부터 새 분 순서대로 반영한다. 표시 기간 필터는 집계 버퍼를 변경하지 않는다.
 - 상세 URL은 `period=session|30m|15m`, `tab=overview|orderbook|trades`. 잘못되거나 중복된 값은 기본값으로 redirect한다. 홈은 `view=all|watchlist`, `symbols`로 목록을 복원하고 미지원/중복 코드는 제외한다. 영구 관심종목/개인 기록 저장은 P3에서 진행한다.
+
+## P2-A 구현 계약 (2026-09-30 · 실행 미검증)
+
+- `domain/financials/`는 예시 회사/보고서 원천 스키마, 금액 parser, 정규화 DTO와 필터를 둔다. 예시 회사 ID는 `fixture-company:<symbol>`이며 실제 8자리 DART corpCode는 `null`이다. 예시 원천의 `fixture:*` 계정 매핑을 실제 기업의 검증된 XBRL 매핑으로 재사용하지 않는다.
+- `data/fixtures/financials.ts`의 자체 작성 수치를 `server/repositories/fixture-financial-repository.ts`가 Zod 검증 후 정규화한다. fixture 외 source와 실제 접수번호/원문 URL을 허용하지 않는다. 실제 DART adapter, 원천 hash, 회사별 계정 검토와 공개 cache는 후속 단계다.
+- 재무·공시는 서버 컴포넌트가 조회하여 `StockDetail`의 ReactNode 슬롯에 전달한다. 원천 파일과 repository는 브라우저 import에 포함하지 않는다. 시장 store에서 재무 조회를 호출하거나 시세 틱으로 무효화하지 않는다.
+- 재무 자료가 동기적인 로컬 fixture인 이번 단계에서는 별도 HTTP API/TanStack Query/Recharts를 추가하지 않았다. 서버 Suspense/오류 UI, 클라이언트 URL 필터와 정적 HTML/CSS 막대로 범위를 제한한다. 향후 비동기 캐시 조회와 상호작용 요구에 맞춰 해당 의존성을 도입한다. 금액을 Number로 바꾸지 않고 BigInt로 제한된 표시 비율만 계산한다.
+- `tab=financials|filings`, `basis=CFS|OFS`, `view=annual|quarter`, `year=2023|2024|2025`를 추가했다. 잘못되거나 중복된 필터는 기본값으로 redirect한다. 미제공인 기준은 그대로 유지하며 다른 기준으로 대체하지 않는다.
+- 각 수치의 펼치기에서 정확한 원 금액, 기간, 연결/별도, 예시 원천행과 정정 버전, 계산 사유를 제공한다. 예시 자료의 날짜는 작성일/예시 제출일로 표시하고 실제 수집일과 혼동하지 않는다. 공시는 공식 검색 사이트 링크만 제공하며 가짜 접수번호로 원문을 만들지 않는다.

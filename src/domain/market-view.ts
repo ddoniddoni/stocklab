@@ -1,7 +1,8 @@
 import { getInstrument, instruments } from "./instruments";
 import type { Candle } from "./market";
+import type { FinancialView } from "./financials/model";
 export const periods = ["session", "30m", "15m"] as const;
-export const tabs = ["overview", "orderbook", "trades"] as const;
+export const tabs = ["overview", "orderbook", "trades", "financials", "filings"] as const;
 export type DetailView = {
   period: (typeof periods)[number];
   tab: (typeof tabs)[number];
@@ -14,8 +15,9 @@ export function parseDetailView(
     tab: tabs.find((value) => value === query.tab) ?? "overview",
   };
 }
-export function detailHref(symbol: string, view: DetailView) {
-  return `/stocks/${symbol}?period=${view.period}&tab=${view.tab}`;
+export function detailHref(symbol: string, view: DetailView, financial?: FinancialView) {
+  const path = `/stocks/${symbol}?period=${view.period}&tab=${view.tab}`;
+  return financial ? `${path}&basis=${financial.basis}&view=${financial.view}&year=${financial.year}` : path;
 }
 export function visibleCandles(
   candles: readonly Candle[],
