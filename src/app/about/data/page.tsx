@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getPublicConfig } from "@/server/config";
 export const metadata = { title: "데이터 설명" };
 export default function DataPage() {
-  const { seed, financialMode } = getPublicConfig();
+  const { seed, financialMode, marketMode } = getPublicConfig();
   return (
     <article className="data-page">
       <Link href="/" className="back-link">
@@ -10,8 +10,19 @@ export default function DataPage() {
       </Link>
       <p className="eyebrow">DATA & SOURCES</p>
       <h1>숫자의 출처를 확인하세요</h1>
-      <p className="intro">시세 시뮬레이션 — 현재 주가가 아닙니다</p>
-      <section>
+      <p className="intro">{marketMode === "synthetic" ? "시세 시뮬레이션 — 현재 주가가 아닙니다" : "한국투자증권 KRX 시세 · 개인 로컬 전용"}</p>
+      {marketMode === "kis-private" ? <section>
+        <h2>개인 로컬 시세</h2>
+        <p>현재가·체결·호가는 한국투자증권의 KRX 응답입니다. 공개 사이트에서는 연결하지 않습니다.
+          실제 시세는 메모리에서만 표시하며 녹화·파일 저장·재배포 기능을 제공하지 않습니다.</p>
+        <p>현재가의 조회 시각과 체결 시각을 구분합니다. 1분 캔들은 상세 화면에서 수신한 체결만 집계하므로
+          최초 연결·화면 이동·중단·숨긴 탭·재연결의 누락 구간이 포함되지 않습니다. 복원한 전체 분봉이 아닙니다.</p>
+        <p>전일 비교 기준가는 현재가에서 원천의 전일 대비 금액을 뺀 계산값입니다. 과거 원주가 종가와 같은 값이라고 보증하지 않습니다.</p>
+        <p>과거 일봉은 원주가로 별도 조회합니다. 거래일 그대로 표시하며 휴장·미제공 일자를 채우지 않습니다.
+          무수신만으로 장 마감을 추정하지 않습니다. 새 시세가 없으면 오래된 데이터로 표시합니다.</p>
+        <p>호가는 날짜가 없어 수신 시각에 가까운 KST 일자를 사용합니다. 스키마가 바뀌거나 호가를 해석할 수 없으면
+          연결 오류로 알립니다. 실제 계정 인증과 수신 검증은 아직 수행하지 않았습니다.</p>
+      </section> : <section>
         <h2>직접 생성한 합성 시세</h2>
         <p>
           현재가, 캔들, 호가, 체결, 거래량은 하나의 seed와 가상 시계로
@@ -50,7 +61,7 @@ export default function DataPage() {
           시계가 멈추고, 복귀해도 사용자의 일시정지는 유지됩니다. 브라우저
           스케줄링이 지연돼도 누적 이벤트를 몰아서 재생하지 않습니다.
         </p>
-      </section>
+      </section>}
       {financialMode === "fixture" ? <section>
         <h2>직접 작성한 예시 재무정보와 공시</h2>
         <p>
@@ -78,7 +89,7 @@ export default function DataPage() {
         </p>
         <p>
           실제 OpenDART 수집과 원문 대조는 아직 하지 않았습니다. 한국투자증권 연결과
-          개인 기록의 클라우드 동기화도 미구현이며 외부 키 없이 예시를 볼 수 있습니다.
+          실제 수신은 미검증이고, 개인 기록의 클라우드 동기화는 미구현입니다. 외부 키 없이 예시를 볼 수 있습니다.
           합성 시세와 재무 예시를 결합한 PER·PBR·시가총액·투자수익률은 제공하지 않습니다.
         </p>
         <p>

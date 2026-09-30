@@ -1,6 +1,6 @@
 import type { Trade } from "@/domain/market";
 import { number, time } from "@/lib/formatting/market";
-export function RecentTrades({ trades }: { trades: readonly Trade[] }) {
+export function RecentTrades({ trades, local = false }: { trades: readonly Trade[]; local?: boolean }) {
   return (
     <section className="panel trades-panel">
       <div className="panel-heading">
@@ -15,12 +15,12 @@ export function RecentTrades({ trades }: { trades: readonly Trade[] }) {
       >
         <table data-testid="trades">
           <caption className="sr-only">
-            합성 최근 체결. 매수·매도 공격 주체는 알 수 없습니다.
+            {local ? "KRX 수신 체결" : "합성 최근 체결"}. 매수·매도 공격 주체는 알 수 없습니다.
           </caption>
           <thead>
             <tr>
               <th scope="col">
-                가상 시각 <small>KST</small>
+                {local ? "체결 시각" : "가상 시각"} <small>KST</small>
               </th>
               <th scope="col">
                 체결가 <small>원</small>
@@ -31,6 +31,7 @@ export function RecentTrades({ trades }: { trades: readonly Trade[] }) {
             </tr>
           </thead>
           <tbody>
+            {!trades.length ? <tr><td colSpan={3}>수신한 체결이 없습니다.</td></tr> : null}
             {trades.slice(0, 200).map((trade) => (
               <tr key={`${trade.sessionId}:${trade.sequence}`}>
                 <td>{time(trade.eventTimeMs)}</td>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-export function SiteHeader() {
+export function SiteHeader({ local = false }: { local?: boolean }) {
   return (
     <>
       <a className="skip-link" href="#main">
@@ -27,7 +27,7 @@ export function SiteHeader() {
           </nav>
           <span className="header-mode">
             <span className="status-dot" />
-            합성 데이터
+            {local ? "KRX · 개인 로컬" : "합성 데이터"}
           </span>
         </div>
       </header>
