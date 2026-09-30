@@ -6,7 +6,7 @@ import { parseWatchSymbols, watchHref } from "@/domain/market-view";
 import { direction, number } from "@/lib/formatting/market";
 import { usePersonal, usePersonalStore } from "@/features/personal/personal-context";
 import { StorageStatus, WatchButton } from "@/features/personal/personal-controls";
-import { useQuote, useQuoteStatus, useMarketMode } from "../market-context";
+import { useQuote, useQuoteStatus, useMarketMode, useMarketReading } from "../market-context";
 function QuoteRow({
   stock,
 }: {
@@ -14,6 +14,7 @@ function QuoteRow({
 }) {
   const quote = useQuote(stock.symbol);
   const status = useQuoteStatus(stock.symbol);
+  const { snapshot: reading } = useMarketReading();
   const local = useMarketMode() === "kis-private";
   return (
     <tr
@@ -32,7 +33,7 @@ function QuoteRow({
       <td className="numeric">
         {quote ? number(quote.lastPrice) : "—"}
         <small className="unit">원</small>
-        {local && status !== "live" ? <small className="subtle"> · {quote ? "최신 수신 미확인" : "미수신"}</small> : null}
+        {local && status !== "live" ? <small className="subtle"> · {reading.frozen ? "고정 당시 " : ""}{quote ? "최신 수신 미확인" : "미수신"}</small> : null}
       </td>
       <td className={`numeric ${direction(quote?.change ?? 0)}`}>
         {quote?.changePercent != null ? `${quote.changePercent >= 0 ? "+" : ""}${quote.changePercent.toFixed(2)}` : "—"}
@@ -51,6 +52,7 @@ function QuoteRow({
 }
 export function HomeMarket() {
   const local = useMarketMode() === "kis-private";
+  const { snapshot: reading } = useMarketReading();
   const query = useSearchParams();
   const router = useRouter();
   const snapshot = usePersonal();
@@ -65,7 +67,7 @@ export function HomeMarket() {
     <section className="panel home-table">
       <div className="panel-heading">
         <h2>{watchOnly ? legacy ? "URL의 선택 종목" : "관심종목" : "지원 종목"}</h2>
-        <span className="subtle">{stocks.length}종목 · {local ? "KRX 로컬 시세" : "합성 시세"}</span>
+        <span className="subtle">{stocks.length}종목 · {local ? "KRX 로컬 시세" : "합성 시세"}{reading.frozen ? " · 고정한 값" : ""}</span>
       </div>
       <nav className="view-nav" aria-label="종목 목록 보기">
         <Link
@@ -89,7 +91,7 @@ export function HomeMarket() {
       {stocks.length ? (
         <table>
           <caption className="sr-only">
-            지원 종목의 {local ? "KRX 현재가와 전일 대비 등락" : "합성 현재가와 합성 등락"}
+            {reading.frozen ? "고정한 " : ""}지원 종목의 {local ? "KRX 현재가와 전일 대비 등락" : "합성 현재가와 합성 등락"}
           </caption>
           <thead>
             <tr>

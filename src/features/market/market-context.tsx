@@ -10,9 +10,10 @@ import { parsePublicConfig, type PublicConfig } from "@/lib/config";
 import { instrument } from "@/domain/instruments";
 import { MarketStore } from "./stores/market-store";
 import { LocalMarketStore } from "./stores/local-market-store";
+import { MarketReadingStore } from "./stores/market-reading-store";
 import type { MarketViewSnapshot } from "@/domain/local-market";
 import type { Quote, HistoryQuery } from "@/domain/market";
-const MarketContext = createContext<MarketStore | LocalMarketStore | null>(null);
+const MarketContext = createContext<MarketReadingStore | null>(null);
 export function MarketSession({
   config,
   children,
@@ -23,7 +24,7 @@ export function MarketSession({
   const [store] = useState(
     () => {
       const parsed = parsePublicConfig(config, process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_MARKET_MODE === "kis-private");
-      return parsed.marketMode === "kis-private" ? new LocalMarketStore() : new MarketStore(parsed.seed);
+      return new MarketReadingStore(parsed.marketMode === "kis-private" ? new LocalMarketStore() : new MarketStore(parsed.seed));
     },
   );
   useEffect(() => {
@@ -86,6 +87,11 @@ export function useSession() {
   };
 }
 export function useMarketMode() { return useStore().mode; }
+export function useMarketReading() {
+  const store = useStore();
+  const snapshot = useSyncExternalStore(store.subscribeReading, store.getReadingSnapshot, store.getServerReadingSnapshot);
+  return { snapshot, freeze: store.freeze, refresh: store.refresh, release: store.release };
+}
 export function useQuoteStatus(symbol: string) {
   const view = useStore().views.get(symbol);
   if (!view) throw new Error("지원하지 않는 종목입니다.");

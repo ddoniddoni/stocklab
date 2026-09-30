@@ -650,6 +650,51 @@ tbody th {
 .candle-summary td {
   padding: 2px 16px 14px;
 }
+.reading-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 20px;
+  margin: 20px 0 12px;
+  padding: 18px 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.reading-controls-heading, .reading-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.reading-controls-heading h2 { font-size: 14px; margin: 0; }
+.reading-badge { color: var(--muted); font-size: 11px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; }
+.reading-badge[data-frozen="true"] { color: #edc37c; border-color: currentColor; }
+.reading-actions button, .candle-toolbar button, .candle-pagination button { min-height: 44px; font-size: 12px; }
+.reading-actions button[data-frozen="true"] { border-color: var(--accent); }
+.reading-help, .reading-status { grid-column: 1 / -1; font-size: 12px; line-height: 1.7; margin: 0; }
+.reading-help { color: var(--muted); }
+.reading-status strong { color: #edc37c; font-weight: 500; }
+.candle-panel .panel-heading { flex-wrap: wrap; }
+.candle-toolbar { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding: 16px 20px 8px; }
+.candle-view-picker { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.candle-view-picker legend { font-size: 12px; color: var(--muted); padding: 0 0 8px; }
+.candle-view-picker label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 12px; cursor: pointer; }
+.candle-view-picker label:has(:checked) { border-color: var(--accent); }
+.candle-view-picker input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.candle-view-help, .candle-table-note { padding: 8px 20px 16px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.candle-summary-time { display: block; padding-top: 6px; }
+.candle-table-scroll { max-width: 100%; overflow-x: auto; }
+.candle-table-scroll:focus-visible { outline-offset: -3px; }
+.candle-table { min-width: 730px; font-size: 12px; }
+.candle-table caption { padding: 12px 20px; color: var(--muted); text-align: left; }
+.candle-table th, .candle-table td { padding: 12px 16px; text-align: right; white-space: nowrap; }
+.candle-table th:first-child { text-align: left; }
+.candle-table tbody th { font-weight: 400; }
+.candle-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 16px 20px; }
+.candle-pagination span { font-size: 12px; color: var(--muted); }
+.candle-empty { padding: 24px 20px; font-size: 13px; color: var(--muted); line-height: 1.7; }
+@media (max-width: 767px) {
+  .reading-controls { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+  .reading-actions { gap: 8px; }
+  .reading-actions button { flex: 1 1 auto; }
+  .candle-toolbar { align-items: start; }
+}
 .book-panel th,
 .book-panel td {
   padding: 4px 12px;

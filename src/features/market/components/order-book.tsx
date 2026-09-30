@@ -3,11 +3,13 @@ import { number, time } from "@/lib/formatting/market";
 export function OrderBookView({
   book,
   lastPrice,
+  frozen = false,
 }: {
   book: OrderBook | null;
   lastPrice: number | null;
+  frozen?: boolean;
 }) {
-  if (!book) return <section className="panel book-panel"><div className="panel-heading"><h2>호가</h2></div><p className="chart-loading" role="status">수신한 호가가 없습니다. 연결 상태와 장 운영 시간을 확인하세요.</p></section>;
+  if (!book) return <section className="panel book-panel"><div className="panel-heading"><h2>{frozen ? "고정한 호가" : "호가"}</h2></div><p className="chart-loading" role="status">{frozen ? "고정한 시점에 호가가 없었습니다. 수신 후 ‘최신 값 한 번 반영’을 누르세요." : "수신한 호가가 없습니다. 연결 상태와 장 운영 시간을 확인하세요."}</p></section>;
   const max = Math.max(
     1,
     ...book.asks.map((level) => level.quantity),
@@ -16,7 +18,7 @@ export function OrderBookView({
   return (
     <section className="panel book-panel">
       <div className="panel-heading">
-        <h2>호가</h2>
+        <h2>{frozen ? "고정한 호가" : "호가"}</h2>
         <span className="subtle">매도·매수 최대 10단계</span>
       </div>
       <table data-testid="orderbook">
@@ -52,7 +54,7 @@ export function OrderBookView({
           ))}
           <tr className="spread-row">
             <td colSpan={3}>
-              현재가 <strong>{lastPrice === null ? "—" : number(lastPrice)}</strong>
+              {frozen ? "고정 시세" : "현재가"} <strong>{lastPrice === null ? "—" : number(lastPrice)}</strong>
               <span>
                 스프레드 {number(book.asks[0]!.price - book.bids[0]!.price)}원
               </span>
