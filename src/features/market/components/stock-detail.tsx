@@ -1,6 +1,8 @@
 "use client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import type { FinancialView } from "@/domain/financials/model";
 import type { MarketSnapshot } from "@/domain/market";
 import { type Instrument } from "@/domain/instruments";
 import {
@@ -25,12 +27,17 @@ const PriceChart = dynamic(() => import("./price-chart"), {
 export function StockDetail({
   stock,
   view,
+  financialView,
+  research,
 }: {
   stock: Instrument;
   view: DetailView;
+  financialView?: FinancialView;
+  research?: ReactNode;
 }) {
   const { snapshot } = useMarket(stock.symbol);
   const { quote, orderBook, trades } = snapshot;
+  const isResearch = view.tab === "financials" || view.tab === "filings";
   return (
     <>
       <Link href="/" className="back-link">
@@ -59,11 +66,13 @@ export function StockDetail({
             ["overview", "개요"],
             ["orderbook", "호가"],
             ["trades", "체결"],
+            ["financials", "재무"],
+            ["filings", "공시"],
           ] as const
         ).map(([tab, label]) => (
           <Link
             key={tab}
-            href={detailHref(stock.symbol, { ...view, tab })}
+            href={detailHref(stock.symbol, { ...view, tab }, financialView)}
             scroll={false}
             aria-current={view.tab === tab ? "page" : undefined}
           >
@@ -71,7 +80,7 @@ export function StockDetail({
           </Link>
         ))}
       </nav>
-      <nav className="period-nav" aria-label="캔들 표시 기간">
+      {!isResearch ? <nav className="period-nav" aria-label="캔들 표시 기간">
         <span>표시 기간</span>
         {(
           [
@@ -82,7 +91,7 @@ export function StockDetail({
         ).map(([period, label]) => (
           <Link
             key={period}
-            href={detailHref(stock.symbol, { ...view, period })}
+            href={detailHref(stock.symbol, { ...view, period }, financialView)}
             scroll={false}
             aria-current={view.period === period ? "page" : undefined}
           >
@@ -90,8 +99,8 @@ export function StockDetail({
           </Link>
         ))}
         <small>집계 간격은 1분입니다.</small>
-      </nav>
-      {view.tab === "overview" ? (
+      </nav> : null}
+      {isResearch ? research : view.tab === "overview" ? (
         <div className="workspace-grid">
           <div className="chart-column">
             <CandlePanel snapshot={snapshot} period={view.period} />
@@ -105,8 +114,8 @@ export function StockDetail({
         <RecentTrades trades={trades} />
       )}
       <p className="data-footer">
-        하나의 합성 세션에서 현재가, 캔들, 호가, 체결을 생성합니다. 재무정보와
-        공시는 이 단계에서 제공하지 않습니다.
+        시세는 하나의 합성 세션에서 생성합니다. 재무·공시는 별도로 작성한 예시이며,
+        실제 주가나 실제 기업 실적이 아닙니다.
       </p>
     </>
   );
