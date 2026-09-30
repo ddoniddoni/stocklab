@@ -238,9 +238,9 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 | 패키지 버전/Node 버전 선정 | Node 24.21.0 LTS / npm 11.17.0, 아래 작업 기록 참조 |
 | 합성 시세 Provider | 5종목, 공유 시계/배속/숨김 정지/전체 초기화/URL 복원 |
 | 실제 한투 키 발급/인증/수신 | 미실행 |
-| DART 키/실제 수집/원문 대조 | 미실행 |
+| DART 키/실제 수집/원문 대조 | P2-B 로컬 수집/검토 도구 코드 작성. 키 준비 상태 미확인, 실제 수집·원문 대조 미실행 |
 | Supabase 생성/migration/RLS | 미실행 |
-| 테스트/lint/typecheck/build | P1-B 당시 unit 44개/E2E 10개 및 기본 검사 통과. P2-A는 사용자 지시로 전부 미실행 |
+| 테스트/lint/typecheck/build | P1-B 당시 unit 44개/E2E 10개 및 기본 검사 통과. P2-A/P2-B는 사용자 지시로 전부 미실행 |
 | Vercel 배포 | 미실행 |
 | Git Flow | P0/P1-A/P1-B/P2-A 코드는 develop에 통합. P2-A는 실행 미검증 유지. main 릴리스 미실행 |
 
@@ -252,9 +252,9 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 | P1 | done | P1-A / P1-B 완료 및 로컬 검증 | 장시간/다중 브라우저 측정은 P6 |
 | P1-A | done | 홈 검색 → 상세, 단일 합성 파이프라인, unit/E2E/브라우저 확인 | 없음 |
 | P1-B | done | 5종목/선택 목록/공유 배속/visibility/URL, unit/E2E/시각 확인 | 실제 OS 백그라운드 동작 미검증 |
-| P2 | in_progress | P2-A 예시 모델/파서/재무·공시 UI 코드 추가 | P2-A 실행 검증, P2-B 실제 수집 |
+| P2 | in_progress | P2-A 예시 재무·공시와 P2-B 수집/원문 검토 도구 코드 추가 | 두 단계 실행 검증, 실제 수집·대조와 실제 데이터의 분기 파생/웹 연결 |
 | P2-A | implemented_unverified | 코드 작성 및 원천 의미의 공식 가이드 참고 | F04/F05/F06을 포함한 자동화 작성/실행, 기본 검사와 UI 확인은 사용자 요청 대기 |
-| P2-B | not_started | 실제 데이터 수집·원문 대조 없음 | 키 설정, 실제 회사/계정 매핑과 수집 도구 |
+| P2-B | implemented_unverified | data:sync/data:review, 원천 해시와 체크포인트, 검토된 로컬 DTO 코드 | CLI/의존성 검증, 키 설정·회사 한 곳의 실제 수집/계정 선택/원문 대조. 키 없음이 확인되면 실제 수집 blocked 기록 |
 | P3 | not_started | 없음 | 비교/개인 로컬 기록 |
 | P4 | not_started | 없음 | 공개 캐시와 모드 차단 |
 | P5 | not_started | 없음 | 실제 한투 로컬 연동 |
@@ -282,6 +282,8 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 | ADR-15 | 예시 재무는 서버 repository + ReactNode 슬롯 + HTML/CSS 막대 | 시세 store와 수명/갱신 분리, 로컬 fixture 단계에 HTTP/차트 의존성 추가를 보류 |
 | ADR-16 | 사용자 명시 요청 전 검증 명령 미실행 | 최신 사용자 지시 우선. P2-A는 코드 작성 후에도 done으로 표시하지 않음 |
 | ADR-17 | 개발 요청 시 브랜치 생성부터 커밋·작업 브랜치 푸시·develop 병합/푸시까지 수행 | 최신 사용자 상시 지시. 검증 명령은 별도 요청 시에만 실행하고 main 릴리스/배포 등은 별도 권한 유지 |
+| ADR-18 | 실제 DART 매핑은 보고서 해시에 결합된 수동 행 선택부터 시작 | 실제 응답을 보지 않고 XBRL ID/계정명 우선순위를 추정하지 않음. fixture 계약은 별도로 유지 |
+| ADR-19 | P2-B export는 Git 제외 로컬 DTO이며 실제 분기 파생/웹 cache는 후속 | 원문·기간 대조 전 실제 실적 화면을 제공하지 않음. 공개 적재는 P4의 별도 동작 |
 
 ### 7.4 검증이 필요한 외부 항목
 
@@ -295,6 +297,36 @@ OpenDART 재무정보의 연결/별도와 단일 분기/누적 금액을 구분�
 위 항목이 미확인이라고 전체 개발을 멈추지는 않는다. 키 없는 합성 UI, parser 테스트, 공개 차단 로직을 먼저 만들고 해당 연동만 미검증 상태로 남긴다.
 
 ## 8. 작업 종료 기록
+
+### 2026-09-30 · P2-B 로컬 DART 수집·검토 도구 (실행 미검증)
+
+**범위와 저장소**
+
+- 사용자 다음 기능 개발 요청에 따라 P2-B 로컬 도구 코드를 작성했다. `develop` / `dcdc858`의 깨끗한 상태에서 `git fetch origin` 후 로컬/원격 차이 0을 확인하고 **코드 편집 전에** `feature/p2b-dart-ingestion`을 생성했다.
+- 사용자 상시 Git Flow 지시에 따라 기능 커밋·작업 브랜치 푸시 후 develop 병합·푸시까지 수행한다. main/PR/릴리스/배포/원격 DB는 범위에 포함하지 않는다.
+- P2-A 완료 게이트와 “다음 단계” 사이의 충돌은 최신 사용자 지시를 우선해 처리했다. P2-A 검증을 임의로 실행하거나 done 처리하지 않고 P2-B의 수집 도구를 개발했다. 키의 존재/유효성은 확인하지 않았으며 실제 수집 완료 또는 키 미설정 확정을 주장하지 않는다.
+
+**작성한 코드와 문서**
+
+- `tools/dart/{schema,errors,options,client,corporations,store,collect,sync,review-model,review}.ts`: Zod 외부 응답/저장 상태, 지원 종목·연도·보고서·기준 인자, 고정 DART endpoint, 금액/회사 식별자 검증, 고유번호 ZIP/XML과 기업 개황 대조, 정기공시 pagination, 선택한 재무 보고서 수집 후보.
+- 동시 1개/최소 700ms/기본 1,000회 누적 예산과 timeout, 최대 2회 일시 오류 재시도, SIGINT/SIGTERM 취소. 예산은 호출 전에 기록하고 실패 재개에도 보존한다. 오류·키·URL·stack 출력 차단, ZIP 크기/항목/경로 제한, XML DTD/엔티티 처리 차단.
+- SHA-256별 원본 보존, 성공 작업 체크포인트, 원자적 상태 저장, 로컬 중복 실행 잠금. 신규 ID로 이전 원본/정정 수집 기록 보존. keyless dry-run은 계획만 출력하도록 작성했다.
+- 원문 대조 양식은 회사/기간/기준/금액·누적 금액/전체 순이익 범위를 직접 확인해야 채울 수 있도록 빈 상태로 생성한다. 내보내기 때 실제 원본에서 후보를 재구성하고 해시/접수번호/행/금액을 확인한다. 실제 자료의 계정 ID를 추정하거나 fixture에 opendart 태그를 붙이지 않는다.
+- DTO는 명시적 필드만 골라 Git 제외 로컬 폴더로 생성한다. 12월 결산/KRW, 검토한 보고/누적 금액까지만 지원한다. 정정 필요·철회 표시/미확인 원문은 내보내기를 거부하고 누락은 null+사유로 보존한다. 실제 Q4/CF 단일 분기 파생과 UI/cache 연결은 실제 표본 검증 이후로 남겼다.
+- package.json의 `data:sync`, `data:review`, Node TypeScript 실행을 위한 tsconfig 설정, README/환경 예제와 문서 02/03/04/05에 절차·제한을 반영했다. `.env.local`/원본/검토/내보내기 파일은 만들지 않았다. 기존 앱의 synthetic/fixture/local 모드와 UI는 변경하지 않았다.
+
+**자료와 의존성**
+
+- 2026-09-30 ego-browser로 공식 DART [고유번호](https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS001&apiId=2019018), [기업 개황](https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS001&apiId=2019002), [공시 검색](https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS001&apiId=2019001), [전체 재무제표](https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS003&apiId=2019020)를 확인했다. 키 입력/API 테스트 폼을 실행하지 않았고 자료용 브라우저 공간은 닫았다.
+- [fflate 공식 저장소](https://github.com/101arrowz/fflate)와 [fast-xml-parser 공식 저장소](https://github.com/NaturalIntelligence/fast-xml-parser), npm 버전/라이선스 메타데이터 및 설치된 타입/구현을 읽었다. ZIP/XML 처리를 위한 두 devDependency를 각각 `0.8.3`, `5.11.2`로 고정했다. 애플리케이션 의존성의 무관한 업데이트는 하지 않았다.
+- 실제 설치 명령: `npm install --save-dev --save-exact --ignore-scripts --no-audit --no-fund fflate@0.8.3 fast-xml-parser@5.11.2`, exit 0, 전이 의존성 포함 9개 패키지 추가. 시스템 Node 26.4.0/npm 11.17.0에서 실행되어 프로젝트 Node 24.x 요구와의 EBADENGINE 경고가 있었다. 지정 Node 버전은 변경하지 않았다. 설치 script/audit는 실행하지 않았다.
+
+**검증과 남은 일**
+
+- 수행: 문서/소스/설치된 라이브러리 읽기, 공식 개발가이드 열람, 의존성 설치, 파일 편집, Git 상태/diff 확인. 기능이 실행됐거나 통과했다는 근거가 아니다.
+- 사용자 지시로 테스트·린트·타입 검사·빌드·React Doctor·브라우저 UI 검증 및 새 CLI의 help/dry-run/실수집/원문 검토·export를 **모두 미실행**했다. 신규 자동화 작성도 별도 요청 시 진행한다. 실제 금융 API 호출 0회, 키 발급/설정/원격 DB/배포 미실행이다.
+- 남은 위험: TS/CLI 호환성, ZIP/XML 실제 형식, API 변화·pagination, 재개/잠금/취소 경합, 비밀값 차단과 검토 gate는 실행 확인하지 않았다. 해시는 파일 간 일치성을 확인할 뿐 수동 원문 대조의 진실성을 증명하지 않는다. 웹은 여전히 예시 데이터만 제공한다.
+- **다음 한 가지 작업:** 사용자가 검증/수집을 요청하면 지정 Node 24에서 P2 도구와 파서 검증 후 회사 하나의 실제 사업·3분기 보고서를 수집·원문 대조한다. 키가 없다면 실제 수집을 blocked로 남긴다.
 
 ### 2026-09-30 · P2-A 커밋·통합 및 상시 Git Flow 지시
 

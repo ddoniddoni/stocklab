@@ -228,6 +228,62 @@ HTTP 성공과 API 본문의 업무 성공 상태를 둘 다 검사한다. 데�
 
 프로젝트 기본 예산: 동시 수집 1개, 요청 간 최소 700ms, 실행당 최대 1,000건. 이는 공식 보장 한도가 아니라 프로젝트의 보수적 설정이다. 인증/권한 오류는 재시도하지 않는다. 일시 오류만 횟수 제한과 backoff로 재시도한다. timeout과 취소 기능을 제공한다.
 
+### 5.4 P2-B 로컬 수집과 원문 대조 절차
+
+**상태: 도구 코드 작성, 실행 미검증.** 2026-09-30에 [고유번호][S08], [기업 개황][S09], [공시 검색][S16], [전체 재무제표][S20] 공식 가이드를 다시 확인했다. API 인증·실제 수집·원문 대조는 수행하지 않았다. 기존 fixture 화면을 실제 DART 모드로 전환하지 않았다.
+
+**설정과 범위**
+
+프로젝트 루트에서 Node 24 LTS/npm 11을 사용한다. 본인이 발급한 DART 키는 기존 값을 보존한 `.env.local`의 `DART_API_KEY`에 직접 설정하고 `APP_ENV=local`을 유지한다. 키를 대화나 명령 인자에 넣지 않는다. CLI는 Node의 환경파일 parser로 이 파일을 명시적으로 읽고 프로세스 환경을 우선하되, 어느 쪽이든 public/Vercel/CI이면 실제 실행을 거부한다. 키 발급·계정 생성과 원격 DB 적재는 도구가 수행하지 않는다.
+
+지원 목록의 종목 하나, 사업연도 하나, CFS/OFS 한 기준만 선택한다. 기본 종목은 `005930`, 연도는 실행 연도의 직전 연도, 보고서는 `11014,11011`, 기준은 CFS다. `--reports`는 `11013,11012,11014,11011`의 중복 없는 부분집합이며 Q4 코드를 만들지 않는다. `--until YYYYMMDD`는 정기공시 검색 종료일로 기본값은 실행일(UTC)이다. 재무 API에는 접수일 기준의 과거 시점 조회 인자가 없으므로 `--until`을 재무의 과거 스냅샷 보장으로 해석하지 않는다.
+
+```bash
+npm run data:sync -- --symbol 005930 --year 2025 --basis CFS --reports 11014,11011 --run samsung-2025-cfs --dry-run
+npm run data:sync -- --symbol 005930 --year 2025 --basis CFS --reports 11014,11011 --run samsung-2025-cfs --max-requests 30
+npm run data:sync -- --run samsung-2025-cfs --resume
+```
+
+dry-run은 키를 읽거나 네트워크/파일 쓰기를 수행하지 않고 최소 요청 수, 실제 요청 예산과 검색 구간을 출력한다. 실제 호출은 timeout 기본 15초(`--timeout-ms` 1,000~60,000), 최소 간격 700ms, 일시 오류 재시도 최대 2회다. 모든 시도는 호출 **이전**에 누적 횟수로 기록한다. 재개도 동일 예산을 사용하며, 예산 소진 시 `--max-requests`를 명시해 올릴 수 있다(실행 ID당 상한 1,000). 이 숫자를 공식 계정 한도라고 주장하지 않는다.
+
+업무 상태는 `000` 성공, `013` 미제공, `010/011/012/901` 인증·권한, `020` 한도, `800/900` 일시 오류로 구분한다. HTTP 401/403, 429도 각각 인증/한도 오류이며 자동 재시도하지 않는다. HTTP 5xx/통신 timeout만 제한 재시도한다. 그 외 업무 코드·스키마 불일치는 고정된 오류 코드로 중단한다. 원천 오류문/요청 URL/stack/키는 출력하지 않는다.
+
+공시 검색은 사업연도 1월 1일부터 종료일까지 3개월 구간으로 나누고, 정기공시 `A`, `last_reprt_at=N`, 페이지당 100건을 사용한다. 페이지 총수 변화나 중복 접수번호는 조용히 누락하지 않고 중단한다. 이런 경우 새 실행 ID로 재수집한다. API 최신 재무의 접수번호가 수집한 공시 목록에 없으면 후보는 보존하지만 DTO 내보내기를 거부한다.
+
+**저장과 재개**
+
+| 경로 | 내용 |
+|---|---|
+| `data/raw/dart/<sha256>.bin` | 인증키/요청 URL을 제외한 실제 응답 바이트, 내용별 원본 보존 |
+| `data/private/dart/runs/<ID>/state.json` | 계획, 요청 예산/사용량, 성공 작업의 해시·수집일, 실행 상태 |
+| 같은 폴더의 `candidate.json` | 회사·공시·재무 행의 수집 후보, source=opendart / unreviewed |
+| 같은 폴더의 `review.json` | 원문 대조 기록과 명시적으로 선택한 계정 행 |
+| `data/private/dart/exports/<ID>-<reviewHash>.json` | 검토를 통과한 로컬 DTO, reviewed-local / publishedAt=null |
+
+위 경로는 기존 `.gitignore`의 `data/raw/`, `data/private/`에 포함된다. 같은 ID의 새 수집은 기존 상태를 덮어쓰지 않는다. 실패/취소는 `--resume`으로 이어가고, 정정 확인 등 새 수집은 새 ID를 사용한다. 성공한 원본은 재개 때 해시와 스키마를 확인하고 다시 요청하지 않는다. 오류로 거부한 응답은 성공 작업으로 저장하지 않는다. 원본이 손상되면 자동 삭제/덮어쓰기 대신 중단한다.
+
+동시 수집/검토는 `data/private/dart/.sync.lock`으로 막는다. Ctrl+C/SIGTERM은 취소 상태를 저장하고 잠금을 해제한다. 강제 종료로 잠금만 남은 경우 다른 도구 프로세스가 없음을 직접 확인한 뒤 빈 잠금 디렉터리를 제거하고 재개한다. 자동으로 다른 실행의 잠금을 빼앗지 않는다. 아직 장기 재개/동시 실행을 실제 검증하지 않았다.
+
+**원문 대조 기록 작성**
+
+```bash
+npm run data:review -- --run samsung-2025-cfs --prepare
+# data/private/dart/runs/samsung-2025-cfs/review.json을 원문과 대조해 직접 작성
+npm run data:review -- --run samsung-2025-cfs --export
+```
+
+양식 생성은 기존 검토 파일을 덮어쓰지 않는다. candidate의 실제 접수번호로 만든 `originalUrl`에서 회사·사업연도·연결/별도·기간·단위를 확인한다. 검토 파일의 `candidateHash`, 보고서의 `payloadHash/receiptNumber/fiscalYear/reportCode/basis`는 그대로 유지한다.
+
+- 최상위: `reviewer`, 수집 이후의 UTC `reviewedAt`, 회사/종목 매핑을 확인한 `companyConfirmed=true`.
+- 보고서: `originalChecked/basisConfirmed/periodConfirmed=true`, 원문에서 확인한 `accountingStandard`와 `restatementKey`, 해당 연도의 1월 1일부터 보고 기간 말일까지의 `periodStart/periodEnd`. 같은 restatementKey는 원문으로 비교 가능성을 확인했을 때만 사용한다.
+- 각 metric: candidate의 정확한 `rowKey`와 원문 금액을 원 단위 정수 문자열로 기록한 `expectedAmount`, 실제 누적 금액 `expectedYtdAmount`, 원문 표/항목 위치 `tableReference`를 작성한다. 빈 값은 null이고 0은 `"0"`이다. 도구가 원천 금액과 대조한다.
+- `amountKind`: BS는 `instant`, 연간 손익/CF는 `annual`, 분·반기 IS/CIS는 `quarter`, 원문에서 누적 의미를 확인한 중간 CF는 `ytd`다. 중간 손익의 expectedYtdAmount는 원천 누적 필드와 일치해야 하고 그 외에는 null이다. 기업 전체 순이익을 선택했을 때만 `profitScope=entity-total`, 다른 metric은 null로 둔다.
+- 금액이 없거나 후보가 여러 개라 확정할 수 없으면 `rowKey=null`, `amountKind=unknown`, 금액·profitScope=null과 구체적인 `missingReason`을 남긴다. 계정명만 보고 자동 합산하거나 `owners-of-parent`를 기업 전체 순이익으로 선택하지 않는다.
+
+내보내기는 모든 수집 원본을 다시 읽어 후보를 재구성하고 state/candidate/review 해시를 대조한다. 회사가 12월 결산이 아니거나, 선택 행이 KRW가 아니거나, 접수번호가 목록에 없거나, 목록에 정정 필요/철회 비고(`정`/`철`)가 있으면 내보내지 않는다. 검토 boolean과 해시는 실제 원문을 읽었다는 사실을 독립적으로 증명하지 않으므로 수동 대조가 필수다.
+
+DTO에는 실제 원천 행, 접수번호, 수집일, 선택된 금액의 기간/기준/통화와 mapper version을 담는다. 현재 CLI의 실제 데이터 산출물은 **보고 금액/누적 금액**까지이며 Q4/중간 CF를 단일 분기로 파생하지 않는다. 실제 표본을 확보·검증한 다음 fixture 전용 정규화 경계를 확장한다. 공개 repository/manifest/`data:publish`는 P4로 남기며 export 명령이 공개 사이트를 변경하지 않는다.
+
 ## 6. 재무 정규화 규칙
 
 ### 6.1 원천과 표시 데이터를 분리한다
