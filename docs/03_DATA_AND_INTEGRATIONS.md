@@ -282,7 +282,45 @@ npm run data:review -- --run samsung-2025-cfs --export
 
 내보내기는 모든 수집 원본을 다시 읽어 후보를 재구성하고 state/candidate/review 해시를 대조한다. 회사가 12월 결산이 아니거나, 선택 행이 KRW가 아니거나, 접수번호가 목록에 없거나, 목록에 정정 필요/철회 비고(`정`/`철`)가 있으면 내보내지 않는다. 검토 boolean과 해시는 실제 원문을 읽었다는 사실을 독립적으로 증명하지 않으므로 수동 대조가 필수다.
 
-DTO에는 실제 원천 행, 접수번호, 수집일, 선택된 금액의 기간/기준/통화와 mapper version을 담는다. 현재 CLI의 실제 데이터 산출물은 **보고 금액/누적 금액**까지이며 Q4/중간 CF를 단일 분기로 파생하지 않는다. 실제 표본을 확보·검증한 다음 fixture 전용 정규화 경계를 확장한다. 공개 repository/manifest/`data:publish`는 P4로 남기며 export 명령이 공개 사이트를 변경하지 않는다.
+DTO에는 실제 원천 행, 접수번호, 수집일, 선택된 금액의 기간/기준/통화와 mapper version을 담는다. 현재 CLI의 실제 데이터 산출물은 **보고 금액/누적 금액**까지이며 Q4/중간 CF를 단일 분기로 파생하지 않는다. 실제 표본을 확보·검증한 다음 실제 데이터 정규화 경계를 확장한다. P4의 공개 repository/manifest/`data:publish`와 별개로 export 명령은 공개 사이트를 변경하지 않는다.
+
+### 5.5 P4 공개 캐시와 조회 계약
+
+**코드 작성 · 실행 미검증. 실제 공개 데이터 0개.** 기본값 `synthetic / fixture / local`과 빈 공개 목록을 유지한다. P2 원천 수집/원문 대조를 완료 처리하지 않는다.
+
+#### 로컬 공개 준비
+
+`npm run data:publish -- --run ID --confirm-public`은 완결된 수집 실행의 원본 해시와 candidate/review를 다시 읽고 재구성한 뒤 공개용 JSON을 만든다. 기존 `data:review`와 `verified-run.ts`를 공유하며 네트워크를 호출하지 않는다. `--confirm-public`은 운영자가 정확성·출처·재이용 조건·개인정보/비밀정보 부재를 직접 검토했다는 명시적 확인이다. 도구 코드 작성만으로 그 검토가 끝났다고 보지 않는다.
+
+- 공개 파일: `data/published/dart-<hash>.json`, 목록: `data/published/manifest.json`. 원천 파일, reviewer 이름, 내부 실행 경로, 계정·키는 DTO에 복사하지 않는다. 선택한 금액의 계정/행/원문 근거는 공개 필드로 보존한다.
+- 한 파일은 회사 하나·사업연도 하나·CFS/OFS 하나, 보고서 최대 4개·9개 metric·1MiB 이하이다. source=opendart, currency=KRW, fiscalMonth=12, mapperVersion, sourceHashes/candidateHash/reviewHash, 수집·검토·공개 준비일을 명시한다.
+- 보고서 기간/통화/순이익 범위/원천 금액/접수번호 URL을 strict 스키마로 확인한다. fixture 태그만 변경한 데이터는 이 계약을 통과하지 못한다. 실제 원문과 이용 조건의 사실 판단은 사람의 검토가 필요하다.
+- JSON의 객체 키를 재귀 정렬한 canonical 직렬화 SHA-256을 manifest에 기록한다. Supabase jsonb의 키 순서가 달라도 동일하게 확인한다. 원천 응답 해시와 공개 DTO 해시는 별개다.
+- 이전 revision을 보존하고 현재 회사·연도·기준의 가장 높은 revision을 조회한다. 새 revision의 보고서 묶음이 그 조건의 현재 상태를 대체하므로 유지할 보고서 전체를 포함해 수집·검토해야 한다. 이전 파일에서 누락 보고서를 조용히 끌어오지 않는다.
+- 파일을 먼저 생성하고 manifest를 마지막에 원자적으로 바꾼다. 도중 중단으로 목록에 없는 파일이 남으면 공개 검사는 실패한다. 해당 파일과 검토 기록을 대조해 수동으로 정리·재준비한다. 자동 삭제/덮어쓰기는 하지 않는다.
+- 명령은 Supabase 적재, Git 반영, 사이트 배포를 실행하지 않는다. 실제 공개 준비 명령도 이번 개발에서는 실행하지 않았다.
+
+#### 저장소와 모드
+
+`NEXT_PUBLIC_FINANCIAL_MODE=dart-cache`에서는 financial source=opendart인 manifest를 사용한다. URL/publishable 키 모두 미설정이면 JSON을 읽는다. `NEXT_PUBLIC_SUPABASE_URL`과 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`가 함께 있으면 hosted `https://<20자리 project-ref>.supabase.co`의 `published_datasets` REST만 조회한다. custom domain/로컬 Supabase/legacy JWT/secret 키는 현재 연결 계약에 포함하지 않는다. 조회는 publishable 키의 `apikey` 헤더만 사용하며 브라우저 요청의 쿠키·Authorization을 전달하지 않는다.
+
+Supabase 응답은 최대 1개·5초·약 1MiB, 등록 ID와 canonical 해시 확인 후 제공한다. 설정된 원격의 miss/권한/네트워크/해시 오류를 파일이나 fixture로 대체하지 않는다. 로컬 스냅샷도 고정 디렉터리·파일명·크기·실제 경로를 확인한다. API/원격 fetch는 no-store이며 재무와 개인 기록을 섞지 않는다.
+
+등록이 없으면 NOT_CONFIGURED, 미지원 법인은 NOT_SUPPORTED, 등록된 법인의 조건 miss는 NOT_AVAILABLE, 자료 형식/저장소 실패는 UPSTREAM_ERROR다. 공개 query는 DART 수집·refresh·운영 도구를 호출하지 않는다. 수집 후 30일을 노후 기준으로 삼으며 캐시 자체가 최신 공시 전체를 보증하지 않는다.
+
+#### DB 적용과 철회
+
+SQL 파일 `supabase/migrations/20260930102900_public_financial_cache.sql`은 CLI 2.118.0으로 빈 파일을 생성한 뒤 작성했다. 로컬·원격 DB 적용/정책 검증은 하지 않았다. `stocklab_private`의 companies/instruments/filings/financial_reports/financial_facts/sync_runs는 익명 접근을 제거하고 RLS를 켠다. public 테이블에는 검토된 DTO만 저장하며 anon/authenticated에는 published 행 SELECT만 허용한다. 쓰기 권한/정책은 없다. service_role 운영 쓰기는 웹 조회와 분리한다.
+
+실제 Supabase 사용 전 별도 요청으로 migration·RLS 검증·등록 DTO 적재가 필요하다. 적재 필드는 JSON의 id/symbol/corpCode/year/basis/revision/source 및 fetchedAt/reviewedAt/publishedAt, manifest sha256, payload와 is_published다. 문서 키와 SQL snake_case 컬럼을 대응시킨다. DB의 기초 제약은 TypeScript 전체 계약을 대신하지 않으므로 검토 도구가 만든 JSON만 적재한다.
+
+철회는 해당 DB 행을 비공개 처리하고 manifest/포함 스냅샷에서도 제거한 뒤 배포해야 한다. DB 비공개만으로 이미 배포된 JSON 복사본이나 클라이언트의 다운로드를 회수할 수 없다. 이 작업은 자동화하지 않았다.
+
+#### 화면과 제한
+
+재무·공시·비교는 같은 repository 선택을 사용한다. 예시는 계속 EXAMPLE, 실제 캐시는 DART CACHE와 날짜/원문 링크를 표시한다. 실제 Q4 손익·분기 CF의 미검증 차감은 하지 않고 미제공 사유와 보고된 누적/연간 참고값을 보여준다. 예시 계산과 실제 계산을 섞지 않는다. 공시 UI는 최근 5개 데이터셋 버전의 검토된 보고서이며 전체 DART 목록이 아니다. 공개 페이지와 API는 noindex/no-follow를 명시한다.
+
+공식 근거 확인일 2026-09-30: [Supabase 변경 기록](https://supabase.com/changelog.md), [Data API 권한](https://supabase.com/docs/guides/api/securing-your-api), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [키/헤더](https://supabase.com/docs/guides/getting-started/api-keys), [REST 경로](https://supabase.com/docs/guides/api), [Next 파일 추적](https://nextjs.org/docs/app/api-reference/config/next-config-js/output). 익명 테이블의 자동 grant가 바뀌는 점을 반영해 revoke/grant를 명시했다. 조회/SQL 실행 성공을 의미하지 않는다.
 
 ## 6. 재무 정규화 규칙
 
@@ -439,12 +477,14 @@ JSON 내보내기는 저장된 기록만 담는다. 저장 전 초안은 별도�
 | `GET /api/instruments?q=...` | 지원 종목 검색 | q 최대 50자, 결과 최대 20개 |
 | `GET /api/companies/[corpCode]` | 회사 개황 | 지원 법인만 |
 | `GET /api/companies/[corpCode]/financials?year=&report=&basis=` | 보고서 하나의 공개 DTO | 캐시 읽기 전용, 유효 enum |
-| `GET /api/companies/[corpCode]/filings?page=` | 공시 목록 | 페이지 크기 고정 20 |
+| `GET /api/companies/[corpCode]/filings?page=` | 검토된 캐시의 공시 | 페이지당 5개 데이터셋·최대 20개 보고서 |
 | `POST /api/local/bridge-session` | 로컬 WS 티켓 | 공개 환경 404, origin 검증 |
 | `GET /api/local/market/quote?symbol=` | 로컬 초기 시세 | 공개 환경 404, allowlist |
 | `GET /api/local/market/candles?symbol=&from=&to=` | 로컬 과거 가격 | 공개 환경 404, 범위 제한 |
 
 재무 overview는 필요한 보고서를 점진적으로 조회하되 동시에 모든 연도를 요청하지 않는다. 비교도 최대 3개 기업만 호출한다. 재무 API가 캐시에 없는 보고서를 요청받으면 즉시 외부 수집을 시작하지 않는다.
+
+P4 구현 범위는 위 GET 5종류다. local bridge 경로는 P5이며 아직 구현하지 않았다. 금융 API는 dart-cache만 제공한다. fixture 모드에서는 실제 corpCode를 만들지 않고 NOT_CONFIGURED를 반환한다. year는 2015~현재 연도, report는 11013/11012/11014/11011, basis는 CFS/OFS이며 세 필드는 필수다. filings page는 1~99, 검색 q는 50자, 중복/미지원 query는 400이다. 공시 페이지는 최대 20개이며 자료 묶음 크기에 따라 적을 수 있다. 같은 접수번호의 기준/캐시 revision이 서로 다른 항목으로 포함될 수 있다. 성공과 실패 모두 no-store이며 requestId 외 내부 오류/원천 응답/키를 노출하지 않는다.
 
 응답은 아래 형태를 공유한다.
 
@@ -476,20 +516,20 @@ export type ApiResult<T> =
   "schemaVersion": 1,
   "market": {
     "source": "synthetic",
-    "generatorVersion": "1.0.0",
+    "generatorVersion": "1.1.0",
     "scenarioId": "balanced-session",
-    "seed": "stocklab-v1",
     "containsRecordedKisData": false
   },
   "financials": {
     "source": "fixture",
-    "reviewedDatasetIds": [],
-    "note": "초기값. 실제 수집과 대조 후에만 opendart로 바꾼다."
+    "datasets": []
   }
 }
 ```
 
 manifest는 자기 선언만으로 라이선스 증명이 되는 것이 아니다. 실제 데이터 생성 경로, 수집 원천, review 기록과 함께 검사한다. 공개 빌드는 한투 키 유무 검사 외에 시세 fixture의 출처도 검사한다.
+
+P4 manifest는 `data/published/manifest.json`이며 datasets 항목은 id/sha256/symbol/corpCode/year/basis/revision만 허용한다. seed는 환경 설정의 비민감 값으로 별도 유지한다. `check:public`은 모드와 source 일치, 미등록 파일, 각 DTO의 strict 계약과 해시, 알려진 비밀값/시세 원천 필드, 빌드 trace의 비공개 경로를 확인하는 코드를 포함한다. 최대 파일 32MiB, symlink는 거부한다. npm build 전후 및 start 전에 연결했으며 이번 작업에서 실행하지 않았다. 이 검사만으로 모든 형태의 녹화 데이터나 권한 문제를 탐지한다고 주장하지 않는다.
 
 ## 10. 공식 참조와 확인 상태
 

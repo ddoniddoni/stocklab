@@ -4,7 +4,7 @@ import { getInstrument } from "@/domain/instruments";
 import { parseDetailView, detailHref } from "@/domain/market-view";
 import { StockDetail } from "@/features/market/components/stock-detail";
 import { parseFinancialView, hasInvalidFinancialQuery } from "@/domain/financials/view";
-import { financialYears } from "@/server/repositories/fixture-financial-repository";
+import { getFinancialYears } from "@/server/repositories/financial-repository";
 import { ResearchLoading, ResearchPanel } from "@/features/financials/research-panel";
 type Props = {
   params: Promise<{ symbol: string }>;
@@ -13,7 +13,7 @@ type Props = {
 export async function generateMetadata({ params }: Props) {
   const { symbol } = await params;
   return {
-    title: `${getInstrument(symbol)?.name ?? "미지원 종목"} · 합성 시세와 예시 재무`,
+    title: `${getInstrument(symbol)?.name ?? "미지원 종목"} · 합성 시세와 재무`,
   };
 }
 export default async function StockPage({ params, searchParams }: Props) {
@@ -22,6 +22,7 @@ export default async function StockPage({ params, searchParams }: Props) {
   if (!stock) notFound();
   const view = parseDetailView(query);
   const research = view.tab === "financials" || view.tab === "filings";
+  const financialYears = await getFinancialYears();
   const financial = research || query.basis !== undefined || query.view !== undefined || query.year !== undefined
     ? parseFinancialView(query, financialYears) : undefined;
   if (

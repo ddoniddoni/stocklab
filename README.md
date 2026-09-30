@@ -1,6 +1,6 @@
 # StockLab
 
-키 없이 실행되는 국내 주식 리서치 UI입니다. **P0 / P1-A / P1-B**에 이어 **P2 재무·수집 도구와 P3 관심종목·기업 비교·리서치 노트 코드를 추가했으며, P2/P3 실행 검증은 아직 하지 않았습니다.** 삼성전자·SK하이닉스·NAVER·현대자동차·LG전자 5종목을 탐색합니다. 웹 화면의 시세는 합성이고 재무·공시는 직접 작성한 예시이며, 실제 주가나 기업 실적이 아닙니다.
+키 없이 실행되는 국내 주식 리서치 UI입니다. **P0 / P1-A / P1-B**에 이어 **P2 재무·수집 도구, P3 개인 리서치, P4 공개 캐시·조회 API·배포 경계 코드를 추가했으며 P2~P4 실행 검증은 아직 하지 않았습니다.** 삼성전자·SK하이닉스·NAVER·현대자동차·LG전자 5종목을 탐색합니다. 기본 화면의 시세는 합성이고 재무·공시는 직접 작성한 예시이며, 실제 주가나 기업 실적이 아닙니다. 실제 데이터 스냅샷은 아직 등록하지 않았습니다.
 
 ## 실행
 
@@ -42,7 +42,7 @@ E2E는 production build를 먼저 만든 뒤 실행합니다. 자체적으로 31
 - `/notes`: 제목·종목·핵심 생각·근거·위험·체크리스트·회고, 600ms 자동 저장과 즉시 저장, 검색/삭제/최근 노트. 초안은 화면 이동 뒤에도 유지하고 다른 탭과의 저장 충돌은 최신본/사본 선택으로 처리합니다.
 - 저장된 개인 기록의 JSON 내보내기/추가 가져오기/초기화, 미저장 노트의 텍스트 내보내기. 백업은 최대 2MiB, 노트는 최대 200개이며 가져온 노트는 새 ID의 사본으로 추가합니다.
 
-기본 설정은 `synthetic / fixture / local`입니다. 재무의 fixture 모드는 **예시 재무정보 — 실제 기업 실적이 아닙니다** 표시를 유지합니다. 아직 구현하지 않은 다른 모드는 실행을 거부합니다. `APP_ENV=public` 또는 `VERCEL=1`에서 외부 수집 키/한투 브리지 설정을 차단합니다.
+기본 설정은 `synthetic / fixture / local`입니다. 재무의 fixture 모드는 **예시 재무정보 — 실제 기업 실적이 아닙니다** 표시를 유지합니다. P4의 `dart-cache`는 검토된 공개 자료만 읽으며 빈 캐시를 예시로 대체하지 않습니다. 시세 `kis-private`과 개인 저장 `supabase`는 계속 실행을 거부합니다. `APP_ENV=public`, `VERCEL=1` 또는 `VERCEL_ENV`가 있으면 수집 키/한투 브리지/privileged Supabase 설정을 차단합니다.
 
 ## 로컬 DART 수집 도구
 
@@ -65,15 +65,26 @@ npm run data:review -- --run samsung-2025-cfs --export
 
 원본은 `data/raw/dart/`, 실행 상태·후보·검토 기록·내보내기는 `data/private/dart/`에 저장되며 모두 Git에서 제외됩니다. 내보내기는 웹 앱의 모드를 바꾸거나 공개 캐시에 배포하지 않습니다. 설정, 재개와 검토 양식 작성법은 [DART 수집 절차](docs/03_DATA_AND_INTEGRATIONS.md#54-p2-b-로컬-수집과-원문-대조-절차)를 참고하세요.
 
+## 공개 재무 캐시 (P4 · 실행 미검증)
+
+- `data/published/manifest.json`은 합성 시세 출처와 공개 재무 목록을 관리합니다. 현재는 `fixture`와 빈 목록입니다.
+- 원문 대조를 마친 로컬 수집 기록에 `npm run data:publish -- --run ID --confirm-public`을 사용하면 공개 DTO와 manifest를 준비합니다. 이 명령은 **네트워크·DB 적재·Git·배포를 실행하지 않습니다.** 공개 준비 전 출처·정확성·재이용 조건과 개인정보/비밀정보 부재를 직접 검토해야 합니다.
+- 실제 모드는 `NEXT_PUBLIC_FINANCIAL_MODE=dart-cache`와 `opendart` manifest를 함께 사용합니다. Supabase URL/publishable 키가 모두 없으면 JSON 스냅샷, 둘 다 있으면 읽기 전용 REST 조회를 사용합니다. 설정된 원격 조회의 오류를 JSON이나 예시로 대체하지 않습니다.
+- 회사·재무·공시 `GET /api/companies/[corpCode]...`는 공개 목록에 등록된 지원 회사만 조회합니다. 실제 고유번호는 수집·검토로 확인하며 임의 예시 번호를 제공하지 않습니다. 개인 기록은 이 API에 포함되지 않습니다.
+- `npm run check:public`과 `npm run check:public -- --artifacts`를 작성했습니다. 향후 `npm run build`의 전후와 `npm run start` 전에 자동 호출됩니다. 이번 작업에서는 실행하지 않았습니다. 설정·manifest·공개 파일·산출물 검사는 실제 Network/RLS/데이터 권한 검증을 대신하지 않습니다.
+- Supabase migration은 `supabase/migrations/20260930102900_public_financial_cache.sql`입니다. 익명 공개 읽기만 허용하고 원천 테이블은 `stocklab_private`에 둡니다. 원격 적용·데이터 적재는 별도 요청 후 진행합니다.
+
+한 번의 스냅샷은 한 회사·연도·회계 기준의 보고서 최대 4개이며 1MiB 이하입니다. 실제 Q4 손익과 분기 현금흐름 파생은 아직 제공하지 않습니다. 수집 후 30일을 넘으면 노후 캐시로 표시하며 금액별 원문 링크/수집일을 제공합니다. 자세한 설정·API 범위·철회·한계는 [공개 캐시 운영 계약](docs/03_DATA_AND_INTEGRATIONS.md#55-p4-공개-캐시와-조회-계약)을 참고하세요.
+
 ## 범위와 검증
 
-P2-A/P2-B/P3는 사용자 지시에 따라 테스트·린트·타입 검사·빌드·React Doctor·브라우저 검증을 실행하지 않은 상태입니다. DART CLI의 dry-run도 실행하지 않았습니다. 아래 P1-B 결과는 이후 변경의 검증 결과가 아닙니다. 실제 DART 수집과 기업별 계정 매핑/원문 대조, 실제 데이터의 웹 연결은 남아 있습니다.
+P2-A/P2-B/P3/P4는 사용자 지시에 따라 테스트·린트·타입 검사·빌드·React Doctor·브라우저 검증을 실행하지 않은 상태입니다. DART CLI의 dry-run, `data:publish`, `check:public`도 실행하지 않았습니다. 아래 P1-B 결과는 이후 변경의 검증 결과가 아닙니다. 실제 DART 수집과 기업별 계정 매핑/원문 대조, 실제 데이터 적재·조회 검증은 남아 있습니다.
 
 2026-09-30 P1-B: Node 24.21.0에서 typecheck, lint, unit 44개, Chromium desktop/mobile E2E 10개, build를 실제로 실행했습니다. P0/P1-A의 npm ci 기록은 진행 문서에 보존합니다. 상세 결과/실패 수정/제한/선정 버전은 [진행 기록](docs/05_QUALITY_AND_PROGRESS.md)을 확인하세요.
 
 현재 Next React/접근성 플러그인과의 호환성 때문에 ESLint 9.39.5를 사용합니다. npm의 지원 종료 경고는 남아 있지만 린트는 통과합니다. ESLint 10 전환은 플러그인 지원 확인 후 진행해야 합니다.
 
-KIS/DART/Supabase 실제 연동, 원격 DB 변경, 배포는 수행하지 않았습니다. 개인 저장 코드는 추가했지만 새로고침·다중 탭·용량/권한 오류 상황의 실제 동작은 미검증입니다. 이 브라우저의 데이터를 삭제하면 개인 기록도 사라집니다. 탭을 닫기 전에 ‘저장됨’을 확인하고 필요한 기록은 내보내세요. 로드 후 합성 재생은 offline에서도 가능하지만 최초 offline 접속을 지원하는 PWA는 아닙니다.
+KIS/DART/Supabase 실제 연동, 로컬/원격 DB migration 적용, 배포는 수행하지 않았습니다. P4 migration SQL은 CLI로 파일만 생성·작성했습니다. 개인 저장 코드는 추가했지만 새로고침·다중 탭·용량/권한 오류 상황의 실제 동작은 미검증입니다. 이 브라우저의 데이터를 삭제하면 개인 기록도 사라집니다. 탭을 닫기 전에 ‘저장됨’을 확인하고 필요한 기록은 내보내세요. 로드 후 합성 재생은 offline에서도 가능하지만 최초 offline 접속을 지원하는 PWA는 아닙니다.
 
 차트: [TradingView Lightweight Charts](https://tradingview.github.io/lightweight-charts/docs), Apache 2.0. 출처와 저작권 고지는 앱의 `/about/data`에 표시합니다.
 

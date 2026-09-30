@@ -15,11 +15,10 @@ export function parsePublicConfig(input: unknown): PublicConfig {
   const config = result.data;
   if (
     config.marketMode !== "synthetic" ||
-    config.financialMode !== "fixture" ||
     config.persistenceMode !== "local"
   ) {
     throw new Error(
-      "P0/P1-A에서는 synthetic / fixture / local 모드만 지원합니다.",
+      "시세는 synthetic, 개인 저장은 local 모드만 지원합니다.",
     );
   }
   return config;
@@ -31,17 +30,14 @@ export function validateEnvironment(env: Record<string, string | undefined>) {
     .safeParse(env.APP_ENV);
   if (!appEnv.success)
     throw new Error("APP_ENV는 local 또는 public이어야 합니다.");
-  if (appEnv.data === "public" || env.VERCEL === "1") {
-    const forbidden = [
-      "KIS_APP_KEY",
-      "KIS_APP_SECRET",
-      "KIS_BRIDGE_SHARED_SECRET",
-      "KIS_BRIDGE_HTTP_URL",
-      "NEXT_PUBLIC_KIS_BRIDGE_WS_URL",
-      "DART_API_KEY",
-      "SUPABASE_SECRET_KEY",
-    ];
-    if (forbidden.some((key) => Boolean(env[key]?.trim())))
+  const publicHost = appEnv.data === "public" || env.VERCEL === "1" || Boolean(env.VERCEL_ENV);
+  const entries = Object.entries(env).filter(([, value]) => Boolean(value?.trim()));
+  if (entries.some(([key, value]) => key.startsWith("NEXT_PUBLIC_") &&
+    (/(?:SECRET|SERVICE_ROLE|DART_API_KEY|KIS_APP_KEY|ACCESS_TOKEN)/.test(key) || value?.startsWith("sb_secret_"))))
+    throw new Error("브라우저 공개 변수에 비밀정보를 설정할 수 없습니다.");
+  if (publicHost) {
+    if (entries.some(([key]) => /(?:^|_)(?:KIS|DART)(?:_|$)/.test(key) ||
+      /SUPABASE_(?:SECRET|SERVICE_ROLE|ACCESS_TOKEN|DB_PASSWORD)/.test(key)))
       throw new Error(
         "공개 환경에는 외부 수집 키나 로컬 브리지 설정을 둘 수 없습니다.",
       );
@@ -52,4 +48,15 @@ export function validateEnvironment(env: Record<string, string | undefined>) {
     persistenceMode: env.NEXT_PUBLIC_PERSISTENCE_MODE,
     seed: env.NEXT_PUBLIC_DEMO_SEED,
   });
+}
+
+export function publicCacheConnection(env: Record<string, string | undefined>) {
+  const url = env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
+  if (!url && !key) return null;
+  // Fixed Supabase host only. No request parameter controls the origin or path.
+  if (!url || !/^https:\/\/[a-z0-9]{20}\.supabase\.co\/?$/.test(url) ||
+    !key || !/^sb_publishable_[A-Za-z0-9_-]+$/.test(key))
+    throw new Error("공개 캐시에는 Supabase 프로젝트 URL과 publishable 키를 함께 설정하세요.");
+  return { url: url.replace(/\/$/, ""), key };
 }

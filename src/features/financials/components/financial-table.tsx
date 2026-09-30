@@ -10,7 +10,7 @@ export function MetricCell({ item }: { item: FinancialMetric }) {
         <span className={item.value !== null && BigInt(item.value) < 0n ? "financial-negative" : undefined}>
           {compactWon(item.value)}
         </span>
-        <span className={`financial-quality quality-${item.quality}`}>{qualityLabels[item.quality]}</span>
+        <span className={`financial-quality quality-${item.quality}`}>{item.source === "opendart" && item.quality === "reported" ? "공시 보고 금액" : qualityLabels[item.quality]}</span>
       </summary>
       <div className="financial-cell-details">
         <strong>{exactWon(item.value)}</strong>
@@ -20,7 +20,7 @@ export function MetricCell({ item }: { item: FinancialMetric }) {
         {item.profitScope ? <p>기업 전체 당기순이익 기준</p> : null}
         {item.calculation ? <p className="financial-calculation">{item.calculation}</p> : null}
         {item.reason ? <p>{item.reason}</p> : null}
-        {item.ytdValue !== null ? <p>보고서의 별도 누적 ({item.fiscalYear}-01-01 ~ {item.periodEnd}): {exactWon(item.ytdValue)}</p> : null}
+        {item.ytdValue !== null ? <p>{item.source === "fixture" ? "보고서의 별도 누적" : "보고서의 누적·연간 참고값"} ({item.fiscalYear}-01-01 ~ {item.periodEnd}): {exactWon(item.ytdValue)}</p> : null}
         {item.evidence.map((source) => (
           <div className="financial-evidence" key={`${source.reportId}:${source.rowKey}`}>
             <strong>{source.title} · 버전 {source.revision}</strong>
@@ -30,22 +30,24 @@ export function MetricCell({ item }: { item: FinancialMetric }) {
             <p>{source.amountKind === "unknown" ? "원천 기간 확인 필요"
               : source.periodStart ? `${source.periodStart} ~ ${source.periodEnd}` : `${source.periodEnd} 시점`}</p>
             {source.rawYtdAmount ? <p>별도 원천 누적 ({source.periodEnd.slice(0, 4)}-01-01 ~ {source.periodEnd}): {source.rawYtdAmount}</p> : null}
-            <p>예시 제출일: {source.publishedAt}</p>
+            <p>{item.source === "fixture" ? "예시 제출일" : "공시 제출일"}: {source.publishedAt}</p>
+            {source.originalUrl ? <a href={source.originalUrl} target="_blank" rel="noreferrer">DART 원문 · {source.receiptNumber} (새 창) ↗</a> : null}
           </div>
         ))}
-        <p>출처: 직접 작성한 예시 · 실제 수집일·접수번호·공시 원문 없음</p>
+        <p>{item.source === "fixture" ? "출처: 직접 작성한 예시 · 실제 수집일·접수번호·공시 원문 없음"
+          : `출처: OpenDART · 수집일 ${item.fetchedAt?.slice(0, 10) ?? "미제공"} · ${item.mapperVersion}`}</p>
       </div>
     </details>
   );
 }
 
-export function FinancialTable({ columns, basis }: { columns: FinancialColumn[]; basis: "CFS" | "OFS" }) {
+export function FinancialTable({ columns, basis, source = "fixture" }: { columns: FinancialColumn[]; basis: "CFS" | "OFS"; source?: "fixture" | "opendart" }) {
   return (
     <section className="panel financial-table-panel">
       <div className="panel-heading"><h2>재무 상세</h2><span className="subtle">값을 열어 기간과 근거 확인</span></div>
-      <div className="financial-table-scroll" role="region" aria-label="예시 재무 상세 표, 가로 스크롤 가능" tabIndex={0}>
+      <div className="financial-table-scroll" role="region" aria-label="재무 상세 표, 가로 스크롤 가능" tabIndex={0}>
         <table className="financial-table">
-          <caption>예시 재무정보 · {basisLabels[basis]} · 실제 기업 실적이 아닙니다. 원 단위 원천값은 각 금액을 열면 표시됩니다.</caption>
+          <caption>{source === "fixture" ? "예시 재무정보 · 실제 기업 실적이 아닙니다." : "OpenDART 검토된 공시 캐시"} · {basisLabels[basis]} · 원 단위 원천값은 각 금액을 열면 표시됩니다.</caption>
           <thead><tr><th scope="col">항목</th>{columns.map((column) => <th scope="col" key={column.key}>{column.label}</th>)}</tr></thead>
           <tbody>
             {metricKeys.map((metric) => (
@@ -72,7 +74,8 @@ export function FinancialTable({ columns, basis }: { columns: FinancialColumn[];
           </tbody>
         </table>
       </div>
-      <div className="panel-foot">손익: 단일 기간 · 현금흐름: 누적에서 분기 도출 · 자산/부채/자본: 기말 잔액</div>
+      <div className="panel-foot">{source === "fixture" ? "손익: 단일 기간 · 현금흐름: 누적에서 분기 도출 · 자산/부채/자본: 기말 잔액"
+        : "실제 Q4 손익·분기 현금흐름의 파생은 미제공입니다. 연간·보고된 누적 금액과 기말 잔액을 확인하세요."}</div>
     </section>
   );
 }

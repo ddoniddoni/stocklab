@@ -75,7 +75,9 @@ export const fixtureDatasetSchema = z.object({
   data.company.id === `fixture-company:${data.company.symbol}` &&
   data.reports.every((report) => report.companyId === data.company.id),
   "보고서 식별자 또는 회사가 일치하지 않습니다.");
-export type Company = z.infer<typeof companySchema>;
+export type Company = z.infer<typeof companySchema> | {
+  id: string; name: string; symbol: string; corpCode: string; fiscalMonth: 12; source: "opendart";
+};
 export type SourceRow = z.infer<typeof sourceRowSchema>;
 export type SourceReport = z.infer<typeof sourceReportSchema>;
 export type FixtureDataset = z.infer<typeof fixtureDatasetSchema>;
@@ -85,8 +87,8 @@ export type FinancialEvidence = {
   title: string;
   revision: number;
   publishedAt: string;
-  receiptNumber: null;
-  originalUrl: null;
+  receiptNumber: string | null;
+  originalUrl: string | null;
   rowKey: string;
   accountId: string;
   accountName: string;
@@ -109,13 +111,13 @@ export type FinancialMetric = {
   quarter: Quarter | null;
   periodStart: string | null;
   periodEnd: string;
-  source: "fixture";
+  source: "fixture" | "opendart";
   quality: "reported" | "derived" | "missing" | "ambiguous";
   profitScope: "entity-total" | null;
   reason: string | null;
   calculation: string | null;
   mapperVersion: string;
-  fetchedAt: null;
+  fetchedAt: string | null;
   evidence: FinancialEvidence[];
 };
 export type FinancialColumn = {
@@ -126,16 +128,18 @@ export type FinancialColumn = {
 export type FinancialView = { basis: Basis; view: "annual" | "quarter"; year: number };
 export type FinancialPageData = {
   company: Company;
-  source: "fixture";
+  source: "fixture" | "opendart";
   generatedAt: string;
+  publishedAt?: string;
+  reviewedAt?: string;
   datasetRevision: string;
   stale: boolean;
   columns: FinancialColumn[];
 };
-export type FixtureFiling = {
+export type FinancialFiling = {
   id: string;
   title: string;
-  source: "fixture";
+  source: "fixture" | "opendart";
   publishedAt: string;
   fiscalYear: number;
   reportCode: ReportCode;
@@ -143,9 +147,11 @@ export type FixtureFiling = {
   revision: number;
   correction: boolean;
   selected: boolean;
-  receiptNumber: null;
-  originalUrl: null;
+  receiptNumber: string | null;
+  originalUrl: string | null;
+  fetchedAt?: string;
 };
+export type FixtureFiling = FinancialFiling;
 
 export interface FinancialRepository {
   getFinancials(symbol: string, view: FinancialView): Promise<FinancialPageData | null>;
